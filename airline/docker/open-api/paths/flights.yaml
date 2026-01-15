@@ -1,0 +1,144 @@
+flightsSearch:
+  get:
+    summary: "Получение всех рейсов в определенном промежутке времени"
+    parameters:
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+    responses:
+      200:
+        description: "Список всех рейсов"
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../openapi.yaml#/components/schemas/Flight'
+      400:
+        description: "Полученные значения от клиента не прошли валидацию"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      404:
+        description: "Рейсы по указанным данным не были найдены"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      500:
+        description: "Произошли ошибки на стороне сервера"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+flightsAdd:
+  post:
+    summary: "Добавление нового рейса"
+
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/FlightRequest'
+
+    responses:
+      201:
+        description: "Рейс был успешно создан"
+      400:
+        description: "Полученные значения от клиента не прошли валидацию"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      500:
+        description: "Произошли ошибки на стороне сервера"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+flightsUpdate:
+  put:
+    summary: "Обновление данных существующего рейса в базе"
+    parameters:
+      - name: flight_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/FlightRequest'
+    responses:
+      201:
+        description: "Рейс был успешно изменен"
+      400:
+        description: "Полученные значения от клиента не прошли валидацию"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      404:
+        description: "Рейс по указанным данным не был найден"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      500:
+        description: "Произошли ошибки на стороне сервера"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+flightsSearchByAirports:
+  get:
+    summary: "Получение списка рейсов по указанному маршруту с указанием страницы"
+    parameters:
+      - name: departure
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: arrival
+        in: query
+        required: true
+        schema:
+          type: string
+      - name: page
+        in: query
+        required: true
+        schema:
+          type: integer
+    responses:
+      200:
+        description: "Список всех рейсов"
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../openapi.yaml#/components/schemas/Flight'
+      400:
+        description: "Полученные значения от клиента не прошли валидацию"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      500:
+        description: "Произошли ошибки на стороне сервера"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'

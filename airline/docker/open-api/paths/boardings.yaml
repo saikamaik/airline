@@ -1,0 +1,64 @@
+boardingsSearch:
+  get:
+    summary: "Получение посадочного талона по уникальному номеру посадочного талона и номеру рейса"
+    parameters:
+      - name: boardingNo
+        in: query
+        required: true
+        schema:
+          type: integer
+      - name: flightId
+        in: query
+        required: true
+        schema:
+          type: integer
+    responses:
+      200:
+        description: "Талон был успешно получен"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/Boarding'
+
+      404:
+        description: "Талона с указанными значениями от клиента не существует"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      500:
+        description: "Произошли ошибки на стороне сервера"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+boardingsAdd:
+  post:
+    summary: "Создание брони на конкретное место в рейсе"
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/BoardingRequest'
+    responses:
+      201:
+        description: "Бронь была успешно создана"
+      400:
+        description: "Полученные значения от клиента не прошли валидацию"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      404:
+        description: "Место или рейс не существуют"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      500:
+        description: "Произошли ошибки на стороне сервера"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'

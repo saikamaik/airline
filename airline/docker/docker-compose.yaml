@@ -1,0 +1,47 @@
+services:
+  airline-database:
+    image: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: dbuser
+      POSTGRES_PASSWORD: dbpassword
+      POSTGRES_DB: jcourse
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./dumps:/docker-entrypoint-initdb.d
+
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./open-api:/app
+    environment:
+      SWAGGER_JSON: /app/openapi.yaml
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    depends_on:
+      - airline-database
+
+  ml-service:
+    build: ../../ml-service
+    container_name: ml-service
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://dbuser:dbpassword@airline-database:5432/jcourse
+      - BACKEND_URL=http://host.docker.internal:8080
+      - DEBUG=true
+    depends_on:
+      - airline-database
+    restart: unless-stopped
+
+volumes:
+  db_data:

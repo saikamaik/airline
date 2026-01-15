@@ -1,0 +1,234 @@
+openapi: 3.0.3
+info:
+  title: Airline API
+  description: Сервис для работы с системой авиалиний
+  version: 1.0.0
+  contact:
+    name: Example c
+    url: https://example.com
+    email: example@work.ru
+servers:
+  - url: "http://localhost:8080"
+paths:
+  /flights/search:
+    $ref: './paths/flights.yaml#/flightsSearch'
+  /flights/add:
+    $ref: './paths/flights.yaml#/flightsAdd'
+  /flights/update/{flight_id}:
+    $ref: './paths/flights.yaml#/flightsUpdate'
+  /flights/search/by-airports:
+    $ref: './paths/flights.yaml#/flightsSearchByAirports'
+  /bookings/flights/{flight_id}:
+    $ref: './paths/bookings.yaml#/bookingsSearchByFlightId'
+  /boardings/search:
+    $ref: './paths/boardings.yaml#/boardingsSearch'
+  /boardings/add:
+    $ref: './paths/boardings.yaml#/boardingsAdd'
+  /free-seats/search:
+    $ref: './paths/seats.yaml#/freeSeatsSearch'
+
+components:
+  schemas:
+    Flight:
+      type: object
+      properties:
+        flightId:
+          type: integer
+        flightNumber:
+          type: string
+        scheduledDeparture:
+          type: string
+          format: date-time
+        scheduledArrival:
+          type: string
+          format: date-time
+        departureAirport:
+          $ref: '#/components/schemas/Airport'
+        arrivalAirport:
+          $ref: '#/components/schemas/Airport'
+        status:
+          type: string
+        aircraft:
+          $ref: '#/components/schemas/Aircraft'
+        actualDeparture:
+          type: string
+          format: date-time
+        actualArrival:
+          type: string
+          format: date-time
+
+    FlightRequest:
+      type: object
+      properties:
+        flightNo:
+          type: string
+        scheduledDeparture:
+          type: string
+          format: date-time
+        scheduledArrival:
+          type: string
+          format: date-time
+        departureAirportCode:
+          type: string
+        arrivalAirportCode:
+          type: string
+        status:
+          type: string
+        aircraftCode:
+          type: string
+
+    Booking:
+      type: object
+      properties:
+        bookRef:
+          type: string
+        bookDate:
+          type: string
+          format: date-time
+        totalAmount:
+          type: number
+          format: float
+        tickets:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ticket'
+
+    Boarding:
+      type: object
+      properties:
+        id:
+          type: object
+          properties:
+            ticketNumber:
+              type: string
+            flightId:
+              type: integer
+        ticket:
+          $ref: '#/components/schemas/Ticket'
+        ticketFlight:
+          $ref: '#/components/schemas/TicketFlight'
+        boardingNumber:
+          type: integer
+        seatNumber:
+          type: string
+
+    BoardingRequest:
+      type: object
+      properties:
+        flightId:
+          type: integer
+        seatNo:
+          type: string
+        passengerName:
+          type: string
+        passengerId:
+          type: string
+        contactData:
+          type: object
+          properties:
+            email:
+              type: string
+            phone:
+              type: string
+
+    Airport:
+      type: object
+      properties:
+        airportCode:
+          type: string
+        airportName:
+          type: object
+          properties:
+            en:
+              type: string
+            ru:
+              type: string
+        city:
+          type: object
+          properties:
+            en:
+              type: string
+            ru:
+              type: string
+        timezone:
+          type: string
+
+    Aircraft:
+      type: object
+      properties:
+        aircraftCode:
+          type: string
+        model:
+          type: object
+          properties:
+            en:
+              type: string
+            ru:
+              type: string
+        range:
+          type: integer
+
+    TicketFlight:
+      type: object
+      properties:
+        ticketFlightId:
+          type: object
+          properties:
+            ticket:
+              type: string
+            flight:
+              type: integer
+        fareConditions:
+          type: string
+        amount:
+          type: number
+          format: float
+
+    Ticket:
+      type: object
+      properties:
+        ticketNo:
+          type: string
+        passengerId:
+          type: string
+        passengerName:
+          type: string
+        contactData:
+          type: object
+          properties:
+            email:
+              type: string
+            phone:
+              type: string
+
+    Seat:
+      type: object
+      properties:
+        seatNumber:
+          type: string
+        fareConditions:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: "Время возникновения ошибки"
+        status:
+          type: integer
+          description: "HTTP статус-код"
+        error:
+          type: string
+          description: "Краткое описание ошибки"
+        message:
+          type: string
+          description: "Подробное сообщение об ошибке"
+        path:
+          type: string
+          description: "Путь запроса, где возникла ошибка"
+      required:
+        - status
+        - error
+        - message

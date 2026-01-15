@@ -1,0 +1,30 @@
+bookingsSearchByFlightId:
+  get:
+    summary: "Получение списка бронирований на конкретный рейс"
+    parameters:
+      - name: flight_id
+        in: path
+        required: true
+        schema:
+          type: integer
+    responses:
+      200:
+        description: "Список был успешно получен"
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '../openapi.yaml#/components/schemas/Booking'
+      404:
+        description: "Список бронирований пуст"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      500:
+        description: "Произошли ошибки на стороне сервера"
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'

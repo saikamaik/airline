@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  ml-service:
+    build: .
+    container_name: ml-service
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@airline-database:5432/jcourse
+      - BACKEND_URL=http://airline-backend:8080
+      - DEBUG=true
+    depends_on:
+      - airline-database
+    networks:
+      - airline-network
+    restart: unless-stopped
+
+  # Внешняя БД (если запускаем отдельно)
+  airline-database:
+    image: postgres:17
+    container_name: airline-database
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: jcourse
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - airline-network
+
+networks:
+  airline-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
