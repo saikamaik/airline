@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -30,6 +31,7 @@ public class EmailService {
     /**
      * Отправка уведомления клиенту о создании заявки
      */
+    @Async
     public void sendRequestCreatedNotification(ClientRequest request) {
         if (!emailEnabled) {
             logger.debug("Email notifications are disabled. Skipping notification for request {}", request.getId());
@@ -53,6 +55,7 @@ public class EmailService {
     /**
      * Отправка уведомления клиенту об изменении статуса заявки
      */
+    @Async
     public void sendStatusChangedNotification(ClientRequest request, RequestStatus oldStatus) {
         if (!emailEnabled) {
             logger.debug("Email notifications are disabled. Skipping notification for request {}", request.getId());
@@ -76,6 +79,7 @@ public class EmailService {
     /**
      * Отправка уведомления сотруднику о назначении новой заявки
      */
+    @Async
     public void sendRequestAssignedNotification(ClientRequest request, Employee employee) {
         if (!emailEnabled) {
             logger.debug("Email notifications are disabled. Skipping notification for employee {}", employee.getId());
@@ -99,6 +103,7 @@ public class EmailService {
     /**
      * Отправка напоминания сотруднику о необработанных заявках
      */
+    @Async
     public void sendReminderNotification(Employee employee, int unprocessedCount) {
         if (!emailEnabled) {
             logger.debug("Email notifications are disabled. Skipping reminder for employee {}", employee.getId());

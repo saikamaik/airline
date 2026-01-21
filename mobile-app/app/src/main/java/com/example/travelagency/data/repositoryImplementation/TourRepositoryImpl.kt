@@ -5,10 +5,10 @@ import com.example.travelagency.data.model.ClientRequestModel
 import com.example.travelagency.data.model.Response
 import com.example.travelagency.domain.CreateRequestResponse
 import com.example.travelagency.domain.FlightsResponse
+import com.example.travelagency.domain.PaginatedToursResponse
 import com.example.travelagency.domain.RequestsResponse
 import com.example.travelagency.domain.TourRepository
 import com.example.travelagency.domain.TourResponse
-import com.example.travelagency.domain.ToursResponse
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
@@ -17,13 +17,13 @@ class TourRepositoryImpl @Inject constructor(
     private val apiService: ApiService
 ) : TourRepository {
 
-    override fun getAllTours(page: Int, size: Int): Flow<ToursResponse> = flow {
+    override fun getAllTours(page: Int, size: Int): Flow<PaginatedToursResponse> = flow {
         emit(Response.Loading)
 
         try {
             val response = apiService.getTours(page = page, size = size)
             if (response.isSuccessful && response.body() != null) {
-                emit(Response.Success(response.body()!!.content))
+                emit(Response.Success(response.body()!!))
             } else {
                 emit(Response.Failure(e = "Ошибка загрузки туров"))
             }
@@ -68,7 +68,7 @@ class TourRepositoryImpl @Inject constructor(
         maxPrice: Double?,
         page: Int,
         size: Int
-    ): Flow<ToursResponse> = flow {
+    ): Flow<PaginatedToursResponse> = flow {
         emit(Response.Loading)
 
         try {
@@ -80,7 +80,7 @@ class TourRepositoryImpl @Inject constructor(
                 maxPrice = maxPrice
             )
             if (response.isSuccessful && response.body() != null) {
-                emit(Response.Success(response.body()!!.content))
+                emit(Response.Success(response.body()!!))
             } else {
                 emit(Response.Failure(e = "Ошибка поиска"))
             }

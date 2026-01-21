@@ -3,6 +3,8 @@ package com.example.airline.controller.admin;
 import com.example.airline.dto.tour.TourDto;
 import com.example.airline.service.tour.TourService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +18,8 @@ import java.math.BigDecimal;
 @RestController
 @RequestMapping("/admin/tours")
 public class AdminTourController {
+    private static final Logger logger = LoggerFactory.getLogger(AdminTourController.class);
+    
     private final TourService tourService;
 
     public AdminTourController(TourService tourService) {
@@ -29,10 +33,10 @@ public class AdminTourController {
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        System.out.println("=== AdminTourController: Запрос туров, страница: " + page + ", размер: " + size);
+        logger.debug("Запрос туров: страница={}, размер={}, направление={}", page, size, destination);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<TourDto> tours = tourService.findWithFilters(destination, minPrice, maxPrice, pageable);
-        System.out.println("=== AdminTourController: Найдено туров: " + tours.getTotalElements());
+        logger.debug("Найдено туров: {}", tours.getTotalElements());
         return ResponseEntity.ok(tours);
     }
 

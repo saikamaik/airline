@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
@@ -26,7 +27,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -122,7 +127,8 @@ fun HomeScreen(
                 }
 
                 is Response.Success -> {
-                    if (response.data.isEmpty()) {
+                    val tours = uiState.value.tours
+                    if (tours.isEmpty()) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
@@ -134,11 +140,34 @@ fun HomeScreen(
                             )
                         }
                     } else {
+                        val listState = rememberLazyListState()
+                        
+                        // Автоматическая загрузка следующей страницы при прокрутке вниз
+                        val shouldLoadMore = remember {
+                            derivedStateOf {
+                                val layoutInfo = listState.layoutInfo
+                                val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull()
+                                val totalItems = layoutInfo.totalItemsCount
+                                
+                                lastVisibleItem != null &&
+                                lastVisibleItem.index >= totalItems - 3 &&
+                                uiState.value.hasMore &&
+                                !uiState.value.isLoadingMore
+                            }
+                        }
+                        
+                        LaunchedEffect(shouldLoadMore.value) {
+                            if (shouldLoadMore.value) {
+                                viewModel.postUiEvent(HomeUiEvent.LoadMoreTours)
+                            }
+                        }
+                        
                         LazyColumn(
+                            state = listState,
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            items(response.data) { tour ->
+                            items(tours) { tour ->
                                 TourCard(
                                     tour = tour,
                                     onClick = {
@@ -147,6 +176,20 @@ fun HomeScreen(
                                         )
                                     }
                                 )
+                            }
+                            
+                            // Индикатор загрузки следующей страницы
+                            if (uiState.value.isLoadingMore) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
+                                }
                             }
                         }
                     }
