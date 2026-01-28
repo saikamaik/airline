@@ -43,10 +43,16 @@ public class AdminTourController {
     @PostMapping
     public ResponseEntity<TourDto> createTour(@Valid @RequestBody TourDto tourDto) {
         try {
+            logger.info("Creating tour: {}", tourDto.getName());
             TourDto created = tourService.createTour(tourDto);
+            logger.info("Tour created successfully with ID: {}", created.getId());
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
         } catch (IllegalArgumentException e) {
+            logger.warn("Failed to create tour: {}", e.getMessage());
             return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            logger.error("Unexpected error while creating tour", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -55,20 +61,32 @@ public class AdminTourController {
             @PathVariable Long id,
             @Valid @RequestBody TourDto tourDto) {
         try {
+            logger.info("Updating tour with ID: {}", id);
             TourDto updated = tourService.updateTour(id, tourDto);
+            logger.info("Tour updated successfully: {}", id);
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
+            logger.warn("Tour not found or invalid data for ID {}: {}", id, e.getMessage());
             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            logger.error("Unexpected error while updating tour with ID: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTour(@PathVariable Long id) {
         try {
+            logger.info("Deleting tour with ID: {}", id);
             tourService.deleteTour(id);
+            logger.info("Tour deleted successfully: {}", id);
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
+            logger.warn("Tour not found for deletion, ID: {}", id);
             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            logger.error("Unexpected error while deleting tour with ID: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }

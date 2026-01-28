@@ -2,6 +2,9 @@ package com.example.travelagency.data.repositoryImplementation
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import com.example.travelagency.data.api.ApiService
 import com.example.travelagency.data.model.AuthResponse
 import com.example.travelagency.data.model.LoginRequest
@@ -21,7 +24,27 @@ class AuthRepositoryImpl @Inject constructor(
     @ApplicationContext val context: Context
 ) : AuthRepository {
 
-    private val prefs: SharedPreferences = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+    companion object {
+        private const val TAG = "AuthRepository"
+        private const val PREFS_NAME = "auth_prefs"
+        
+        // Получение EncryptedSharedPreferences для безопасного хранения токенов
+        fun getEncryptedPrefs(context: Context): SharedPreferences {
+            val masterKey = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+
+            return EncryptedSharedPreferences.create(
+                context,
+                PREFS_NAME,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+        }
+    }
+
+    private val prefs: SharedPreferences = getEncryptedPrefs(context)
 
     override fun signIn(username: String, password: String): Flow<SignInResponse> = flow {
         emit(Response.Loading)
@@ -31,12 +54,17 @@ class AuthRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 val authResponse = response.body()!!
                 saveToken(authResponse.token, authResponse.username)
+                Log.d(TAG, "User signed in successfully: $username")
                 emit(Response.Success(authResponse))
             } else {
-                emit(Response.Failure(e = "Неверный логин или пароль"))
+                val errorMsg = "Неверный логин или пароль"
+                Log.w(TAG, "Sign in failed: ${response.code()} - ${response.message()}")
+                emit(Response.Failure(e = errorMsg))
             }
         } catch (e: Exception) {
-            emit(Response.Failure(e = e.message ?: "Ошибка подключения к серверу"))
+            val errorMsg = e.message ?: "Ошибка подключения к серверу"
+            Log.e(TAG, "Sign in error", e)
+            emit(Response.Failure(e = errorMsg))
         }
     }
 
@@ -63,12 +91,17 @@ class AuthRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 val authResponse = response.body()!!
                 saveToken(authResponse.token, authResponse.username)
+                Log.d(TAG, "User registered successfully: $username")
                 emit(Response.Success(authResponse))
             } else {
-                emit(Response.Failure(e = "Ошибка регистрации"))
+                val errorMsg = "Ошибка регистрации"
+                Log.w(TAG, "Registration failed: ${response.code()} - ${response.message()}")
+                emit(Response.Failure(e = errorMsg))
             }
         } catch (e: Exception) {
-            emit(Response.Failure(e = e.message ?: "Ошибка подключения к серверу"))
+            val errorMsg = e.message ?: "Ошибка подключения к серверу"
+            Log.e(TAG, "Registration error", e)
+            emit(Response.Failure(e = errorMsg))
         }
     }
 
@@ -77,7 +110,10 @@ class AuthRepositoryImpl @Inject constructor(
         val username = prefs.getString("username", null)
         return if (token != null && username != null) {
             UserModel(username = username, token = token)
-        } else null
+        } else {
+            Log.d(TAG, "No current user found")
+            null
+        }
     }
 
     override fun saveToken(token: String, username: String) {

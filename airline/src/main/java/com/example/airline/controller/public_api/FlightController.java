@@ -6,6 +6,8 @@ import com.example.airline.entity.flight.Flight;
 import com.example.airline.service.flight.AirportService;
 import com.example.airline.service.flight.FlightService;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -20,12 +22,29 @@ import java.util.Optional;
 @RequestMapping("/flights")
 public class FlightController {
 
+    private static final Logger logger = LoggerFactory.getLogger(FlightController.class);
+    
     private final FlightService flightService;
     private final AirportService airportService;
 
     public FlightController(FlightService flightService, AirportService airportService) {
         this.flightService = flightService;
         this.airportService = airportService;
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<FlightDto>> getAllFlights(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size) {
+        try {
+            logger.debug("Getting all flights: page={}, size={}", page, size);
+            Page<FlightDto> flights = flightService.getAllFlights(page, size);
+            logger.debug("Found {} flights", flights.getTotalElements());
+            return ResponseEntity.ok(flights);
+        } catch (Exception e) {
+            logger.error("Error getting all flights", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @PostMapping("/add")

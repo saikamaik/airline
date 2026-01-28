@@ -121,15 +121,28 @@ public class MlServiceClient {
     public Mono<JsonNode> getDemandForecast(String destination) {
         return webClient.get()
                 .uri(uriBuilder -> {
-                    var builder = uriBuilder.path("/analytics/forecast");
-                    if (destination != null) {
+                    var builder = uriBuilder.path("/analytics/forecast")
+                            .queryParam("horizon_months", 6);  // Прогноз на 6 месяцев
+                    if (destination != null && !destination.isEmpty()) {
                         builder.queryParam("destination", destination);
                     }
                     return builder.build();
                 })
                 .retrieve()
                 .bodyToMono(JsonNode.class)
-                .timeout(Duration.ofSeconds(15))
+                .timeout(Duration.ofSeconds(30))
+                .onErrorResume(e -> Mono.empty());
+    }
+
+    /**
+     * Получить все направления из базы данных
+     */
+    public Mono<JsonNode> getAllDestinations() {
+        return webClient.get()
+                .uri("/analytics/all-destinations")
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(30))
                 .onErrorResume(e -> Mono.empty());
     }
 
@@ -167,6 +180,60 @@ public class MlServiceClient {
                 .retrieve()
                 .bodyToMono(Void.class)
                 .timeout(Duration.ofSeconds(5))
+                .onErrorResume(e -> Mono.empty());
+    }
+
+    /**
+     * Получить кластеры туров
+     */
+    public Mono<JsonNode> getTourClusters(int nClusters) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/analytics/clusters")
+                        .queryParam("n_clusters", nClusters)
+                        .build())
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(15))
+                .onErrorResume(e -> Mono.empty());
+    }
+
+    /**
+     * Получить метрики моделей
+     */
+    public Mono<JsonNode> getModelMetrics() {
+        return webClient.get()
+                .uri("/analytics/model-metrics")
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(15))
+                .onErrorResume(e -> Mono.empty());
+    }
+
+    /**
+     * Получить аномальные туры
+     */
+    public Mono<JsonNode> getAnomalousTours() {
+        return webClient.get()
+                .uri("/analytics/anomalies")
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(15))
+                .onErrorResume(e -> Mono.empty());
+    }
+
+    /**
+     * Получить сезонные тренды
+     */
+    public Mono<JsonNode> getSeasonalTrends(int months) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/analytics/trends")
+                        .queryParam("months", months)
+                        .build())
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(15))
                 .onErrorResume(e -> Mono.empty());
     }
 }

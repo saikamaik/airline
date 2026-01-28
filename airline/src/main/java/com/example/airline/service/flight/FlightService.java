@@ -133,5 +133,15 @@ public class FlightService {
         long totalCount = flightRepository.countByDepartureAirportAndArrivalAirport(departure, arrival);
         return (long) Math.ceil((double) totalCount / PAGE_SIZE);
     }
+
+    /**
+     * Получить все рейсы с пагинацией
+     */
+    @Transactional(readOnly = true)
+    public Page<FlightDto> getAllFlights(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "scheduledDeparture"));
+        Page<Flight> flightsPage = flightRepository.findAll(pageable);
+        return flightsPage.map(FlightService::getFlightDTO);
+    }
 }
 

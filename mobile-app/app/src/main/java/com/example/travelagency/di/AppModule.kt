@@ -1,6 +1,7 @@
 package com.example.travelagency.di
 
 import android.content.Context
+import com.example.travelagency.BuildConfig
 import com.example.travelagency.data.api.ApiService
 import com.example.travelagency.data.repositoryImplementation.AuthRepositoryImpl
 import com.example.travelagency.data.repositoryImplementation.TourRepositoryImpl
@@ -31,7 +32,8 @@ object AppModule {
         @ApplicationContext context: Context
     ): Interceptor {
         return Interceptor { chain ->
-            val prefs = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+            // Используем EncryptedSharedPreferences для безопасного хранения токена
+            val prefs = AuthRepositoryImpl.getEncryptedPrefs(context)
             val token = prefs.getString("token", null)
 
             val request = chain.request().newBuilder()
@@ -46,7 +48,12 @@ object AppModule {
     @Singleton
     fun provideOkHttpClient(authInterceptor: Interceptor): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            // В production логируем только заголовки, в debug - все тело запроса
+            level = if (BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.BODY
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
         }
 
         return OkHttpClient.Builder()

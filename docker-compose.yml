@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL база данных
   airline-database:
@@ -49,17 +47,24 @@ services:
       EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
       
       # Demo data
-      APP_DEMO_DATA_ENABLED: ${APP_DEMO_DATA_ENABLED:-false}
+      APP_DEMO_DATA_ENABLED: "true"
       
       # SQL logging (отключено для продакшена)
       SPRING_JPA_SHOW_SQL: ${SPRING_JPA_SHOW_SQL:-false}
       SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: ${SPRING_JPA_FORMAT_SQL:-false}
       
       # Spring Boot автоматически конвертирует APP_DEMO_DATA_ENABLED в app.demo-data.enabled
-      // APP_DEMO_DATA_ENABLED: ${APP_DEMO_DATA_ENABLED:-false}
     depends_on:
       airline-database:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
     restart: unless-stopped
     networks:
       - airline-network

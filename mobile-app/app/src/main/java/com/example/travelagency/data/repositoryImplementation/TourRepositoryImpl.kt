@@ -1,5 +1,6 @@
 package com.example.travelagency.data.repositoryImplementation
 
+import android.util.Log
 import com.example.travelagency.data.api.ApiService
 import com.example.travelagency.data.model.ClientRequestModel
 import com.example.travelagency.data.model.Response
@@ -13,6 +14,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 
+private const val TAG = "TourRepository"
+
 class TourRepositoryImpl @Inject constructor(
     private val apiService: ApiService
 ) : TourRepository {
@@ -25,9 +28,11 @@ class TourRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 emit(Response.Success(response.body()!!))
             } else {
+                Log.w(TAG, "Failed to load tours: ${response.code()} - ${response.message()}")
                 emit(Response.Failure(e = "Ошибка загрузки туров"))
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error loading tours", e)
             emit(Response.Failure(e = e.message ?: "Ошибка подключения"))
         }
     }
@@ -40,9 +45,11 @@ class TourRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 emit(Response.Success(response.body()!!))
             } else {
+                Log.w(TAG, "Tour not found: id=$id, code=${response.code()}")
                 emit(Response.Failure(e = "Тур не найден"))
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error loading tour: id=$id", e)
             emit(Response.Failure(e = e.message ?: "Ошибка подключения"))
         }
     }
@@ -55,9 +62,11 @@ class TourRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 emit(Response.Success(response.body()!!))
             } else {
+                Log.w(TAG, "Flights not found: tourId=$tourId, code=${response.code()}")
                 emit(Response.Failure(e = "Рейсы не найдены"))
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error loading flights: tourId=$tourId", e)
             emit(Response.Failure(e = e.message ?: "Ошибка подключения"))
         }
     }
@@ -82,9 +91,11 @@ class TourRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 emit(Response.Success(response.body()!!))
             } else {
+                Log.w(TAG, "Search failed: destination=$destination, code=${response.code()}")
                 emit(Response.Failure(e = "Ошибка поиска"))
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error searching tours: destination=$destination", e)
             emit(Response.Failure(e = e.message ?: "Ошибка подключения"))
         }
     }
@@ -108,11 +119,14 @@ class TourRepositoryImpl @Inject constructor(
             )
             val response = apiService.createRequest(tourId, request)
             if (response.isSuccessful && response.body() != null) {
+                Log.d(TAG, "Request created successfully: tourId=$tourId")
                 emit(Response.Success(response.body()!!))
             } else {
+                Log.w(TAG, "Failed to create request: tourId=$tourId, code=${response.code()}")
                 emit(Response.Failure(e = "Ошибка создания заявки"))
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error creating request: tourId=$tourId", e)
             emit(Response.Failure(e = e.message ?: "Ошибка подключения"))
         }
     }
@@ -125,9 +139,11 @@ class TourRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 emit(Response.Success(response.body()!!.content))
             } else {
+                Log.w(TAG, "Failed to load requests: code=${response.code()}")
                 emit(Response.Failure(e = "Ошибка загрузки заявок"))
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error loading requests", e)
             emit(Response.Failure(e = e.message ?: "Ошибка подключения"))
         }
     }

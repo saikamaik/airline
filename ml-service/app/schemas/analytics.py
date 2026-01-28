@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
 from datetime import date
 from enum import Enum
 
@@ -44,6 +44,8 @@ class DemandForecast(BaseModel):
     destination: str
     current_demand: int
     predicted_demand: int
+    current_revenue: float  # Текущая выручка
+    predicted_revenue: float  # Прогнозируемая выручка
     confidence: float  # Уверенность прогноза (0-1)
     trend: str  # "rising", "falling", "stable"
     recommendation: str  # Рекомендация для менеджера
@@ -59,6 +61,44 @@ class PriceOptimization(BaseModel):
     reasoning: str
 
 
+class AnomalousTour(BaseModel):
+    """Аномальный тур (требует внимания)"""
+    tour_id: int
+    tour_name: str
+    destination: str
+    current_price: float
+    anomaly_type: str  # "high_demand_low_price", "low_demand_high_price", "unusual_pattern"
+    demand_score: float  # Оценка спроса (0-1)
+    price_score: float  # Оценка цены относительно спроса (0-1)
+    recommendation: str  # Рекомендация по цене
+    expected_revenue_impact: float  # Ожидаемое влияние на выручку при изменении цены
+
+
+class TourCluster(BaseModel):
+    """Кластер туров"""
+    cluster_id: int
+    cluster_type: str
+    description: str
+    tours: List[Dict]
+    avg_price: float
+    avg_duration: float
+    total_popularity: int
+    avg_conversion: float
+
+
+class ModelMetrics(BaseModel):
+    """Метрики качества моделей"""
+    destination: str
+    linear_r2: float
+    random_forest_r2: float
+    gradient_boosting_r2: float
+    ensemble_r2: float
+    ensemble_mae: float
+    ensemble_rmse: float
+    avg_r2: float
+    weights: Dict[str, float]
+
+
 class AnalyticsResponse(BaseModel):
     """Общий ответ аналитики"""
     period: str
@@ -67,3 +107,5 @@ class AnalyticsResponse(BaseModel):
     seasonal_trends: List[SeasonalTrend]
     demand_forecasts: List[DemandForecast]
     price_recommendations: Optional[List[PriceOptimization]] = None
+    tour_clusters: Optional[List[TourCluster]] = None
+    model_metrics: Optional[List[ModelMetrics]] = None

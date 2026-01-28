@@ -19,7 +19,7 @@
     "@mui/x-date-pickers": "^7.0.0",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
-    "date-fns": "^3.0.0"
+    "date-fns": "^2.30.0"
   },
   "devDependencies": {
     "@types/react": "^18.3.11",

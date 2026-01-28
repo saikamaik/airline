@@ -1,5 +1,6 @@
 """API эндпоинты для рекомендаций"""
 
+import logging
 from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional
 from app.schemas.tour import (
@@ -8,6 +9,9 @@ from app.schemas.tour import (
     TourRecommendation
 )
 from app.services.recommendation_service import RecommendationService
+from app.exceptions import DatabaseError, ServiceUnavailableError, DataValidationError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/recommendations", tags=["Рекомендации"])
 
@@ -37,8 +41,18 @@ async def get_recommendations(request: RecommendationRequest):
             total_tours_analyzed=total_analyzed,
             model_version="1.0"
         )
+    except DataValidationError as e:
+        logger.warning(f"Validation error in get_recommendations: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except DatabaseError as e:
+        logger.error(f"Database error in get_recommendations: {e}")
+        raise HTTPException(status_code=503, detail="Database service unavailable")
+    except ServiceUnavailableError as e:
+        logger.error(f"Service unavailable in get_recommendations: {e}")
+        raise HTTPException(status_code=503, detail="Service temporarily unavailable")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Unexpected error in get_recommendations: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/similar/{tour_id}", response_model=List[TourRecommendation])
@@ -55,6 +69,7 @@ async def get_similar_tours(
     try:
         similar = recommendation_service.get_similar_tours(tour_id, limit)
         if not similar:
+            logger.info(f"Tour {tour_id} not found or no similar tours")
             raise HTTPException(
                 status_code=404, 
                 detail=f"Тур с ID {tour_id} не найден или нет похожих туров"
@@ -63,6 +78,7 @@ async def get_similar_tours(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error getting similar tours for tour_id={tour_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -81,6 +97,7 @@ async def get_popular_tours(
         recommendations = recommendation_service.get_recommendations(request)
         return recommendations
     except Exception as e:
+        logger.error(f"Error getting popular tours: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
