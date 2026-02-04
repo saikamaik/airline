@@ -24,7 +24,8 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    private const val BASE_URL = "http://10.0.2.2:8080/"
+    // Используем BASE_URL из BuildConfig (можно переопределить в build.gradle.kts)
+    private val BASE_URL = BuildConfig.BASE_URL
 
     @Provides
     @Singleton
@@ -48,7 +49,6 @@ object AppModule {
     @Singleton
     fun provideOkHttpClient(authInterceptor: Interceptor): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
-            // В production логируем только заголовки, в debug - все тело запроса
             level = if (BuildConfig.DEBUG) {
                 HttpLoggingInterceptor.Level.BODY
             } else {

@@ -9,6 +9,7 @@ from app.schemas.analytics import (
     PopularDestination,
     SeasonalTrend,
     DemandForecast,
+    DemandForecastTableRow,
     PriceOptimization,
     AnalyticsResponse,
     TimeRange
@@ -152,6 +153,35 @@ async def get_seasonal_trends(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+@router.get("/forecast/table", response_model=List[DemandForecastTableRow])
+async def get_demand_forecast_table():
+    """
+    Получить прогноз спроса в табличном формате.
+    
+    Возвращает данные в формате таблицы:
+    - Направление
+    - Текущий спрос (заявок/неделю)
+    - Прогноз (заявок/неделю)
+    - Изменение (%)
+    - Тренд (Растущий/Стабильный/Падающий)
+    - Уверенность
+    - Рекомендация
+    """
+    try:
+        result = analytics_service.get_demand_forecast_table()
+        logger.info(f"Forecast table returned {len(result)} rows")
+        return result
+    except DatabaseError as e:
+        logger.error(f"Database error in get_demand_forecast_table: {e}")
+        raise HTTPException(status_code=503, detail="Database service unavailable")
+    except ServiceUnavailableError as e:
+        logger.error(f"Service unavailable in get_demand_forecast_table: {e}")
+        raise HTTPException(status_code=503, detail="Service temporarily unavailable")
+    except Exception as e:
+        logger.error(f"Unexpected error in get_demand_forecast_table: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
 @router.get("/forecast")
 async def get_demand_forecast(
     destination: Optional[str] = Query(default=None),
@@ -239,7 +269,7 @@ async def get_demand_forecast(
             "totalPredictedRevenue": round(total_predicted_revenue, 2),
             "destinationBreakdown": destination_summary,
             "recommendations": list(set(recommendations))[:5],  # Уникальные рекомендации, максимум 5
-            "hasMore": len(forecasts) > limit  # Флаг наличия дополнительных данных
+            "hasMore": len(forecasts) > 5  # Флаг наличия дополнительных данных
         }
     except DatabaseError as e:
         logger.error(f"Database error in get_demand_forecast: {e}")
@@ -442,7 +472,7 @@ async def get_dashboard_data():
         average_check = total_revenue / completed_count if completed_count > 0 else 0.0
         
         # Получаем прогноз выручки на следующий месяц
-        next_month_forecasts = analytics_service.forecast_demand(horizon_days=30)
+        next_month_forecasts = analytics_service.forecast_demand(horizon_months=1)
         next_month_revenue = sum(f.predicted_revenue for f in next_month_forecasts)
         
         # Детальный прогноз по направлениям (топ-5 по умолчанию)

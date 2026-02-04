@@ -1,8 +1,5 @@
 package com.example.travelagency.data.model
 
-
-
-
 sealed class Response<out T> {
     object Loading: Response<Nothing>()
 

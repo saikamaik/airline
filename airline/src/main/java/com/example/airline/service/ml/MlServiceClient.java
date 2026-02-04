@@ -135,6 +135,24 @@ public class MlServiceClient {
     }
 
     /**
+     * Получить прогноз спроса в табличном формате
+     */
+    public Mono<JsonNode> getDemandForecastTable() {
+        return webClient.get()
+                .uri("/analytics/forecast/table")
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(30))
+                .doOnError(e -> org.slf4j.LoggerFactory.getLogger(MlServiceClient.class)
+                        .error("Error getting demand forecast table: {}", e.getMessage()))
+                .onErrorResume(e -> {
+                    org.slf4j.LoggerFactory.getLogger(MlServiceClient.class)
+                            .warn("ML service returned error for forecast table, returning empty");
+                    return Mono.empty();
+                });
+    }
+
+    /**
      * Получить все направления из базы данных
      */
     public Mono<JsonNode> getAllDestinations() {

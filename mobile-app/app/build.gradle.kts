@@ -20,10 +20,26 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        
+        // API Base URL будет переопределен в buildTypes
+        buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8080/\"")
     }
 
     buildTypes {
+        debug {
+            // Для разработки - локальный сервер
+            // Для эмулятора: http://10.0.2.2:8080/
+            // Для физического устройства в той же сети: http://192.168.1.42:8080/
+            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8080/\"")
+        }
+        
         release {
+            // Для продакшна - замените на ваш реальный сервер
+            // Примеры:
+            // - С доменом: "https://api.yourdomain.com/"
+            // - С IP: "http://your-server-ip:8080/"
+            buildConfigField("String", "BASE_URL", "\"https://your-domain.com/\"")
+            
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -40,9 +56,10 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
+        kotlinCompilerExtensionVersion = "1.5.8"
     }
     packaging {
         resources {
@@ -53,6 +70,7 @@ android {
 
 dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation(platform("androidx.compose:compose-bom:2023.08.00"))

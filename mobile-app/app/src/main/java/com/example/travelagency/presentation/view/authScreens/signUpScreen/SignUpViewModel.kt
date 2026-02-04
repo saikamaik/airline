@@ -35,23 +35,50 @@ class SignUpViewModel @Inject constructor(
     }
 
     private fun onUsernameChange(username: String) {
-        _uiState.value = _uiState.value.copy(username = username)
+        val error = when {
+            username.isBlank() -> null
+            username.length < 3 -> "Логин должен быть не менее 3 символов"
+            username.length > 50 -> "Логин должен быть не более 50 символов"
+            else -> null
+        }
+        _uiState.value = _uiState.value.copy(username = username, usernameError = error)
     }
 
     private fun onPasswordChange(password: String) {
-        _uiState.value = _uiState.value.copy(password = password)
+        val error = when {
+            password.isBlank() -> null
+            password.length < 6 -> "Пароль должен быть не менее 6 символов"
+            password.length > 100 -> "Пароль должен быть не более 100 символов"
+            else -> null
+        }
+        _uiState.value = _uiState.value.copy(password = password, passwordError = error)
     }
 
     private fun onEmailChange(email: String) {
-        _uiState.value = _uiState.value.copy(email = email)
+        val error = when {
+            email.isBlank() -> null
+            !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> "Некорректный email"
+            else -> null
+        }
+        _uiState.value = _uiState.value.copy(email = email, emailError = error)
     }
 
     private fun onFirstNameChange(firstName: String) {
-        _uiState.value = _uiState.value.copy(firstName = firstName)
+        val error = when {
+            firstName.isBlank() -> null
+            firstName.length < 2 -> "Имя должно быть не менее 2 символов"
+            else -> null
+        }
+        _uiState.value = _uiState.value.copy(firstName = firstName, firstNameError = error)
     }
 
     private fun onLastNameChange(lastName: String) {
-        _uiState.value = _uiState.value.copy(lastName = lastName)
+        val error = when {
+            lastName.isBlank() -> null
+            lastName.length < 2 -> "Фамилия должна быть не менее 2 символов"
+            else -> null
+        }
+        _uiState.value = _uiState.value.copy(lastName = lastName, lastNameError = error)
     }
 
     private fun onPhoneChange(phone: String) {
@@ -67,19 +94,22 @@ class SignUpViewModel @Inject constructor(
     private fun signUp() = viewModelScope.launch {
         val state = _uiState.value
 
+        // Проверяем ошибки валидации полей
+        val hasFieldErrors = state.usernameError != null || state.passwordError != null ||
+            state.emailError != null || state.firstNameError != null || state.lastNameError != null
+
+        // Валидация обязательных полей
         if (state.username.isBlank() || state.password.isBlank() ||
             state.email.isBlank() || state.firstName.isBlank() || state.lastName.isBlank()) {
             _uiState.value = _uiState.value.copy(errorMessage = "Заполните все обязательные поля")
             return@launch
         }
 
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(state.email).matches()) {
-            _uiState.value = _uiState.value.copy(errorMessage = "Некорректный email")
-            return@launch
-        }
-
-        if (state.password.length < 6) {
-            _uiState.value = _uiState.value.copy(errorMessage = "Пароль должен быть не менее 6 символов")
+        // Если есть ошибки валидации полей, не отправляем запрос
+        if (hasFieldErrors) {
+            _uiState.value = _uiState.value.copy(
+                errorMessage = "Исправьте ошибки в заполненных полях"
+            )
             return@launch
         }
 

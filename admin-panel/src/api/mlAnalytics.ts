@@ -91,6 +91,16 @@ export interface MlForecast {
   recommendations: string[];
 }
 
+export interface MlForecastTableRow {
+  destination: string;
+  current_demand_per_week: number;
+  predicted_demand_per_week: number;
+  change_percent: number;
+  trend: string;
+  confidence: number;
+  recommendation: string;
+}
+
 export interface MlHealth {
   ml_service: string;
   status: string;
@@ -113,11 +123,18 @@ export const mlAnalyticsApi = {
   },
 
   getForecast: async (destination?: string): Promise<MlForecast> => {
-    const url = destination 
-      ? `/admin/analytics/forecast?destination=${encodeURIComponent(destination)}`
-      : '/admin/analytics/forecast';
-    const response = await apiClient.get(url);
-    return response.data;
+    try {
+      const url = destination 
+        ? `/admin/analytics/forecast?destination=${encodeURIComponent(destination)}`
+        : '/admin/analytics/forecast';
+      console.log('Fetching forecast for destination:', destination || 'all');
+      const response = await apiClient.get(url);
+      console.log('Forecast API response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching forecast:', error);
+      throw error;
+    }
   },
 
   checkHealth: async (): Promise<MlHealth> => {
@@ -148,5 +165,17 @@ export const mlAnalyticsApi = {
   getAllDestinations: async (): Promise<string[]> => {
     const response = await apiClient.get('/admin/analytics/all-destinations');
     return response.data;
+  },
+
+  getForecastTable: async (): Promise<MlForecastTableRow[]> => {
+    try {
+      console.log('Fetching forecast table');
+      const response = await apiClient.get('/admin/analytics/forecast/table');
+      console.log('Forecast table API response:', response.data);
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      console.error('Error fetching forecast table:', error);
+      return [];
+    }
   },
 };

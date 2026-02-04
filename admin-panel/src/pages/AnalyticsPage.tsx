@@ -50,7 +50,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { statisticsApi, Statistics } from '../api/statistics';
-import { mlAnalyticsApi, MlAnalytics, MlDashboard, MlForecast, MlHealth, TourCluster, ModelMetrics } from '../api/mlAnalytics';
+import { mlAnalyticsApi, MlAnalytics, MlDashboard, MlForecast, MlForecastTableRow, MlHealth, TourCluster, ModelMetrics } from '../api/mlAnalytics';
 
 // Компонент для горизонтальной прокрутки с кнопками
 function ScrollableGrid({ children }: { children: React.ReactNode }) {
@@ -175,6 +175,7 @@ export default function AnalyticsPage() {
   const [mlDashboard, setMlDashboard] = useState<MlDashboard | null>(null);
   const [mlAnalytics, setMlAnalytics] = useState<MlAnalytics | null>(null);
   const [mlForecast, setMlForecast] = useState<MlForecast | null>(null);
+  const [mlForecastTable, setMlForecastTable] = useState<MlForecastTableRow[]>([]);
   const [mlHealth, setMlHealth] = useState<MlHealth | null>(null);
   const [loading, setLoading] = useState(true);
   const [mlLoading, setMlLoading] = useState(false);
@@ -192,6 +193,40 @@ export default function AnalyticsPage() {
     loadStats();
     loadMlData();
   }, []);
+
+  // Автоматическая загрузка прогноза при открытии вкладки прогнозов
+  useEffect(() => {
+    if (tabValue === 2) {
+      // Загружаем прогноз и таблицу при открытии вкладки прогнозов
+      const loadForecastData = async () => {
+        try {
+          setMlLoading(true);
+          const [forecast, table] = await Promise.all([
+            mlAnalyticsApi.getForecast(forecastDestination || undefined),
+            mlAnalyticsApi.getForecastTable()
+          ]);
+          console.log('Initial forecast loaded:', forecast);
+          console.log('Initial table loaded:', table);
+          if (forecast) {
+            setMlForecast(forecast);
+          }
+          if (table && Array.isArray(table)) {
+            setMlForecastTable(table);
+          } else {
+            console.warn('Table data is not an array:', table);
+            setMlForecastTable([]);
+          }
+        } catch (error) {
+          console.error('Error loading forecast:', error);
+          setMlForecast(null);
+          setMlForecastTable([]);
+        } finally {
+          setMlLoading(false);
+        }
+      };
+      loadForecastData();
+    }
+  }, [tabValue]); // Загружаем только при открытии вкладки
 
   const loadMlData = async () => {
     try {
@@ -244,6 +279,14 @@ export default function AnalyticsPage() {
       }
       if (forecast.status === 'fulfilled') {
         setMlForecast(forecast.value);
+      }
+      
+      // Загружаем табличный формат прогноза
+      try {
+        const table = await mlAnalyticsApi.getForecastTable();
+        setMlForecastTable(table);
+      } catch (error) {
+        console.error('Error loading forecast table:', error);
       }
       if (health.status === 'fulfilled') setMlHealth(health.value);
       if (clusters.status === 'fulfilled') setTourClusters(clusters.value);
@@ -616,23 +659,25 @@ export default function AnalyticsPage() {
                         <Typography variant="subtitle2" gutterBottom>
                           Топ направлений по месяцам:
                         </Typography>
-                        <ScrollableGrid>
+                        <Grid container spacing={2}>
                           {seasonalTrends.map((trend, idx) => (
-                            <Paper key={idx} sx={{ p: 1.5, bgcolor: 'grey.50', minWidth: { xs: 200, sm: 250 } }}>
-                              <Typography variant="body2" fontWeight="bold">
-                                {trend.month_name}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {trend.request_count} заявок, {trend.avg_price.toLocaleString('ru-RU')} ₽
-                              </Typography>
-                              {trend.top_destinations && trend.top_destinations.length > 0 && (
-                                <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
-                                  {trend.top_destinations.join(', ')}
+                            <Grid item xs={12} sm={6} md={4} lg={3} key={idx}>
+                              <Paper sx={{ p: 1.5, bgcolor: 'grey.50' }}>
+                                <Typography variant="body2" fontWeight="bold">
+                                  {trend.month_name}
                                 </Typography>
-                              )}
-                            </Paper>
+                                <Typography variant="caption" color="text.secondary">
+                                  {trend.request_count} заявок, {trend.avg_price.toLocaleString('ru-RU')} ₽
+                                </Typography>
+                                {trend.top_destinations && trend.top_destinations.length > 0 && (
+                                  <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                                    {trend.top_destinations.join(', ')}
+                                  </Typography>
+                                )}
+                              </Paper>
+                            </Grid>
                           ))}
-                        </ScrollableGrid>
+                        </Grid>
                       </Box>
                     </Paper>
                   </Grid>
@@ -848,7 +893,35 @@ export default function AnalyticsPage() {
               <Autocomplete
                 options={availableDestinations}
                 value={forecastDestination || null}
-                onChange={(_, newValue) => setForecastDestination(newValue || '')}
+                onChange={async (_, newValue) => {
+                  const destination = newValue || '';
+                  setForecastDestination(destination);
+                  // Автоматически загружаем прогноз при изменении направления
+                  try {
+                    setMlLoading(true);
+                    const [forecast, table] = await Promise.all([
+                      mlAnalyticsApi.getForecast(destination || undefined),
+                      mlAnalyticsApi.getForecastTable()
+                    ]);
+                    console.log('Forecast loaded for destination:', destination, forecast);
+                    console.log('Table loaded:', table);
+                    if (forecast) {
+                      setMlForecast(forecast);
+                    }
+                    if (table && Array.isArray(table)) {
+                      setMlForecastTable(table);
+                    } else {
+                      console.warn('Table data is not an array:', table);
+                      setMlForecastTable([]);
+                    }
+                  } catch (error) {
+                    console.error('Error loading forecast:', error);
+                    setMlForecast(null);
+                    setMlForecastTable([]);
+                  } finally {
+                    setMlLoading(false);
+                  }
+                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -866,8 +939,12 @@ export default function AnalyticsPage() {
                 onClick={async () => {
                   try {
                     setMlLoading(true);
-                    const forecast = await mlAnalyticsApi.getForecast(forecastDestination || undefined);
+                    const [forecast, table] = await Promise.all([
+                      mlAnalyticsApi.getForecast(forecastDestination || undefined),
+                      mlAnalyticsApi.getForecastTable()
+                    ]);
                     setMlForecast(forecast);
+                    setMlForecastTable(table);
                   } catch (error) {
                     console.error('Error loading forecast:', error);
                   } finally {
@@ -876,7 +953,7 @@ export default function AnalyticsPage() {
                 }}
                 disabled={mlLoading}
               >
-                Получить прогноз
+                Обновить прогноз
               </Button>
             </Box>
 
@@ -886,7 +963,7 @@ export default function AnalyticsPage() {
               </Box>
             ) : mlForecast ? (
               <Grid container spacing={3}>
-                {mlForecast.forecast && mlForecast.forecast.length > 0 && (
+                {mlForecast.forecast && Array.isArray(mlForecast.forecast) && mlForecast.forecast.length > 0 && (
                   <Grid item xs={12}>
                     <Paper sx={{ p: 3 }}>
                       <Typography variant="h6" gutterBottom>
@@ -897,7 +974,7 @@ export default function AnalyticsPage() {
                           Общая прогнозируемая выручка: {mlForecast.totalPredictedRevenue.toLocaleString('ru-RU')} ₽
                         </Alert>
                       )}
-                      <ResponsiveContainer width="100%" height={400}>
+                      <ResponsiveContainer width="100%" height={400} key={`forecast-chart-${forecastDestination || 'all'}`}>
                         <LineChart data={mlForecast.forecast}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis 
@@ -954,11 +1031,108 @@ export default function AnalyticsPage() {
                   </Grid>
                 )}
 
+                {/* Таблица прогноза спроса в формате: Направление | Текущий спрос | Прогноз | Изменение | Тренд | Уверенность | Рекомендация */}
+                <Grid item xs={12}>
+                  <Paper sx={{ p: 3, width: '100%', overflow: 'hidden' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Typography variant="h6">
+                        Прогноз спроса по направлениям (табличный формат)
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        onClick={async () => {
+                          try {
+                            setMlLoading(true);
+                            const table = await mlAnalyticsApi.getForecastTable();
+                            setMlForecastTable(table);
+                          } catch (error) {
+                            console.error('Error loading forecast table:', error);
+                            setMlForecastTable([]);
+                          } finally {
+                            setMlLoading(false);
+                          }
+                        }}
+                        disabled={mlLoading}
+                        size="small"
+                      >
+                        Обновить таблицу
+                      </Button>
+                    </Box>
+                    {mlLoading ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                        <CircularProgress />
+                      </Box>
+                    ) : mlForecastTable && mlForecastTable.length > 0 ? (
+                      <Box sx={{ width: '100%', overflowX: 'auto' }}>
+                        <TableContainer>
+                          <Table sx={{ minWidth: 1200 }}>
+                            <TableHead>
+                              <TableRow>
+                                <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'background.paper' }}>Направление</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 'bold', backgroundColor: 'background.paper' }}>Текущий спрос (заявок/неделю)</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 'bold', backgroundColor: 'background.paper' }}>Прогноз (заявок/неделю)</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 'bold', backgroundColor: 'background.paper' }}>Изменение</TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 'bold', backgroundColor: 'background.paper' }}>Тренд</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 'bold', backgroundColor: 'background.paper' }}>Уверенность</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', backgroundColor: 'background.paper' }}>Рекомендация</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {mlForecastTable.map((row, idx) => (
+                                <TableRow key={`forecast-${row.destination}-${idx}`} hover>
+                                  <TableCell sx={{ fontWeight: 'medium' }}>{row.destination}</TableCell>
+                                  <TableCell align="right">{row.current_demand_per_week}</TableCell>
+                                  <TableCell align="right">{row.predicted_demand_per_week}</TableCell>
+                                  <TableCell align="right">
+                                    <Typography
+                                      variant="body2"
+                                      sx={{
+                                        color: row.change_percent > 0 ? 'success.main' : row.change_percent < 0 ? 'error.main' : 'text.secondary',
+                                        fontWeight: 'bold'
+                                      }}
+                                    >
+                                      {row.change_percent > 0 ? '+' : ''}{row.change_percent.toFixed(1)}%
+                                    </Typography>
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    <Chip
+                                      label={row.trend}
+                                      color={
+                                        row.trend === 'Растущий' ? 'success' :
+                                        row.trend === 'Падающий' ? 'error' : 'default'
+                                      }
+                                      size="small"
+                                    />
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    {(row.confidence * 100).toFixed(0)}%
+                                  </TableCell>
+                                  <TableCell>
+                                    <Typography variant="body2" sx={{ whiteSpace: 'normal', wordBreak: 'break-word', maxWidth: 400 }}>
+                                      {row.recommendation}
+                                    </Typography>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </Box>
+                    ) : (
+                      <Alert severity="info">
+                        {mlForecastTable && mlForecastTable.length === 0 
+                          ? 'Данные прогноза отсутствуют. Попробуйте обновить таблицу или проверьте доступность ML сервиса.'
+                          : 'Нажмите "Обновить таблицу" для загрузки данных прогноза'}
+                      </Alert>
+                    )}
+                  </Paper>
+                </Grid>
+
                 {mlForecast.destinationBreakdown && mlForecast.destinationBreakdown.length > 0 && (
                   <Grid item xs={12}>
                     <Paper sx={{ p: 3 }}>
                       <Typography variant="h6" gutterBottom>
-                        Прогноз по направлениям
+                        Прогноз по направлениям (детальный)
                       </Typography>
                       <TableContainer>
                         <Table>
@@ -1176,55 +1350,57 @@ export default function AnalyticsPage() {
                 <CircularProgress />
               </Box>
             ) : anomalousTours && anomalousTours.length > 0 ? (
-              <ScrollableGrid>
+              <Grid container spacing={3}>
                 {anomalousTours.map((anomaly, idx) => (
-                  <Paper key={idx} sx={{ p: 3, minWidth: { xs: 300, md: 500 } }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
-                      <Box>
-                        <Typography variant="h6" gutterBottom>
-                          {anomaly.tour_name}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {anomaly.destination}
-                        </Typography>
+                  <Grid item xs={12} key={idx}>
+                    <Paper sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
+                        <Box>
+                          <Typography variant="h6" gutterBottom>
+                            {anomaly.tour_name}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {anomaly.destination}
+                          </Typography>
+                        </Box>
+                        <Chip
+                          label={
+                            anomaly.anomaly_type === 'high_demand_low_price' ? 'Высокий спрос, низкая цена' :
+                            anomaly.anomaly_type === 'low_demand_high_price' ? 'Низкий спрос, высокая цена' :
+                            'Необычный паттерн'
+                          }
+                          color={
+                            anomaly.anomaly_type === 'high_demand_low_price' ? 'success' :
+                            anomaly.anomaly_type === 'low_demand_high_price' ? 'error' :
+                            'warning'
+                          }
+                        />
                       </Box>
-                      <Chip
-                        label={
-                          anomaly.anomaly_type === 'high_demand_low_price' ? 'Высокий спрос, низкая цена' :
-                          anomaly.anomaly_type === 'low_demand_high_price' ? 'Низкий спрос, высокая цена' :
-                          'Необычный паттерн'
-                        }
-                        color={
-                          anomaly.anomaly_type === 'high_demand_low_price' ? 'success' :
-                          anomaly.anomaly_type === 'low_demand_high_price' ? 'error' :
-                          'warning'
-                        }
-                      />
-                    </Box>
-                    <Grid container spacing={2} sx={{ mb: 2 }}>
-                      <Grid item xs={6} md={3}>
-                        <Typography variant="body2" color="text.secondary">Текущая цена</Typography>
-                        <Typography variant="h6">{anomaly.current_price.toLocaleString('ru-RU')} ₽</Typography>
+                      <Grid container spacing={2} sx={{ mb: 2 }}>
+                        <Grid item xs={6} md={3}>
+                          <Typography variant="body2" color="text.secondary">Текущая цена</Typography>
+                          <Typography variant="h6">{anomaly.current_price.toLocaleString('ru-RU')} ₽</Typography>
+                        </Grid>
+                        <Grid item xs={6} md={3}>
+                          <Typography variant="body2" color="text.secondary">Оценка спроса</Typography>
+                          <Typography variant="h6">{(anomaly.demand_score * 100).toFixed(0)}%</Typography>
+                        </Grid>
+                        <Grid item xs={6} md={3}>
+                          <Typography variant="body2" color="text.secondary">Оценка цены</Typography>
+                          <Typography variant="h6">{(anomaly.price_score * 100).toFixed(0)}%</Typography>
+                        </Grid>
+                        <Grid item xs={6} md={3}>
+                          <Typography variant="body2" color="text.secondary">Влияние на выручку</Typography>
+                          <Typography variant="h6" color={anomaly.expected_revenue_impact > 0 ? 'success.main' : 'error.main'}>
+                            {anomaly.expected_revenue_impact > 0 ? '+' : ''}{anomaly.expected_revenue_impact.toLocaleString('ru-RU')} ₽
+                          </Typography>
+                        </Grid>
                       </Grid>
-                      <Grid item xs={6} md={3}>
-                        <Typography variant="body2" color="text.secondary">Оценка спроса</Typography>
-                        <Typography variant="h6">{(anomaly.demand_score * 100).toFixed(0)}%</Typography>
-                      </Grid>
-                      <Grid item xs={6} md={3}>
-                        <Typography variant="body2" color="text.secondary">Оценка цены</Typography>
-                        <Typography variant="h6">{(anomaly.price_score * 100).toFixed(0)}%</Typography>
-                      </Grid>
-                      <Grid item xs={6} md={3}>
-                        <Typography variant="body2" color="text.secondary">Влияние на выручку</Typography>
-                        <Typography variant="h6" color={anomaly.expected_revenue_impact > 0 ? 'success.main' : 'error.main'}>
-                          {anomaly.expected_revenue_impact > 0 ? '+' : ''}{anomaly.expected_revenue_impact.toLocaleString('ru-RU')} ₽
-                        </Typography>
-                      </Grid>
-                    </Grid>
-                    <Alert severity="info">{anomaly.recommendation}</Alert>
-                  </Paper>
+                      <Alert severity="info">{anomaly.recommendation}</Alert>
+                    </Paper>
+                  </Grid>
                 ))}
-              </ScrollableGrid>
+              </Grid>
             ) : (
               <Alert severity="info">Аномальные туры не найдены. Все туры соответствуют ожидаемым паттернам.</Alert>
             )}

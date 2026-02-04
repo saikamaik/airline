@@ -106,6 +106,24 @@ public class AdminAnalyticsController {
     }
 
     /**
+     * Получить прогноз спроса в табличном формате
+     */
+    @GetMapping("/forecast/table")
+    public ResponseEntity<JsonNode> getDemandForecastTable() {
+        try {
+            JsonNode result = mlServiceClient.getDemandForecastTable()
+                    .block(Duration.ofSeconds(30));
+            if (result != null) {
+                return ResponseEntity.ok(result);
+            }
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        } catch (Exception e) {
+            logger.error("Error getting demand forecast table", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
      * Проверить доступность ML-сервиса
      */
     @GetMapping("/health")

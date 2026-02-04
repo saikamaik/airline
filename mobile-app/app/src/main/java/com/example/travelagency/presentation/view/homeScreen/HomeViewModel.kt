@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.travelagency.data.model.Response
 import com.example.travelagency.domain.TourRepository
+import com.example.travelagency.domain.ToursResponse
 import com.example.travelagency.presentation.view.homeScreen.uiEvent.HomeUiEvent
 import com.example.travelagency.presentation.view.homeScreen.uiState.HomeUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -43,14 +44,14 @@ class HomeViewModel @Inject constructor(
             currentPage = 0,
             hasMore = true,
             tours = emptyList(),
-            toursResponse = com.example.travelagency.domain.ToursResponse.Loading
+            toursResponse = Response.Loading as ToursResponse
         )
         
         val response = tourRepository.getAllTours(page = 0, size = _uiState.value.pageSize).first()
         when (response) {
             is Response.Loading -> {
                 _uiState.value = _uiState.value.copy(
-                    toursResponse = com.example.travelagency.domain.ToursResponse.Loading
+                    toursResponse = Response.Loading as ToursResponse
                 )
             }
             is Response.Success -> {
@@ -59,12 +60,12 @@ class HomeViewModel @Inject constructor(
                     tours = tourListResponse.content,
                     currentPage = 0,
                     hasMore = !tourListResponse.last,
-                    toursResponse = com.example.travelagency.domain.ToursResponse.Success(tourListResponse.content)
+                    toursResponse = Response.Success(tourListResponse.content) as ToursResponse
                 )
             }
             is Response.Failure -> {
                 _uiState.value = _uiState.value.copy(
-                    toursResponse = com.example.travelagency.domain.ToursResponse.Failure(response.e)
+                    toursResponse = Response.Failure(response.e) as ToursResponse
                 )
             }
         }
@@ -81,7 +82,7 @@ class HomeViewModel @Inject constructor(
             currentPage = 0,
             hasMore = true,
             tours = emptyList(),
-            toursResponse = com.example.travelagency.domain.ToursResponse.Loading
+            toursResponse = Response.Loading as ToursResponse
         )
 
         val response = tourRepository.searchTours(
@@ -95,7 +96,7 @@ class HomeViewModel @Inject constructor(
         when (response) {
             is Response.Loading -> {
                 _uiState.value = _uiState.value.copy(
-                    toursResponse = com.example.travelagency.domain.ToursResponse.Loading
+                    toursResponse = Response.Loading as ToursResponse
                 )
             }
             is Response.Success -> {
@@ -104,12 +105,12 @@ class HomeViewModel @Inject constructor(
                     tours = tourListResponse.content,
                     currentPage = 0,
                     hasMore = !tourListResponse.last,
-                    toursResponse = com.example.travelagency.domain.ToursResponse.Success(tourListResponse.content)
+                    toursResponse = Response.Success(tourListResponse.content) as ToursResponse
                 )
             }
             is Response.Failure -> {
                 _uiState.value = _uiState.value.copy(
-                    toursResponse = com.example.travelagency.domain.ToursResponse.Failure(response.e)
+                    toursResponse = Response.Failure(response.e) as ToursResponse
                 )
             }
         }
@@ -158,7 +159,7 @@ class HomeViewModel @Inject constructor(
                         currentPage = nextPage,
                         hasMore = !tourListResponse.last,
                         isLoadingMore = false,
-                        toursResponse = com.example.travelagency.domain.ToursResponse.Success(newTours)
+                        toursResponse = Response.Success(newTours) as ToursResponse
                     )
                 }
                 is Response.Failure -> {

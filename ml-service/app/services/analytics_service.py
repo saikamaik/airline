@@ -15,6 +15,7 @@ from app.schemas.analytics import (
     PopularDestination,
     SeasonalTrend,
     DemandForecast,
+    DemandForecastTableRow,
     PriceOptimization,
     AnalyticsResponse,
     TimeRange
@@ -292,6 +293,90 @@ class AnalyticsService:
             )
         
         return sorted(forecasts, key=lambda x: x.predicted_demand, reverse=True)
+    
+    def get_demand_forecast_table(self) -> List[DemandForecastTableRow]:
+        """Получить прогноз спроса в табличном формате (спрос по неделям)"""
+        import logging
+        logger = logging.getLogger(__name__)
+        from datetime import datetime, timedelta
+        
+        try:
+            # Получаем данные за последние 4 недели для расчета текущего недельного спроса
+            requests = self.data_service.get_requests(30)  # За последний месяц
+            logger.info(f"Got {len(requests)} requests for forecast table")
+            
+            if requests.empty:
+                logger.warning("No requests found for forecast table")
+                return []
+            
+            # Получаем прогнозы (они уже рассчитаны по месяцам)
+            monthly_forecasts = self.forecast_demand()
+            logger.info(f"Got {len(monthly_forecasts)} monthly forecasts")
+            
+            if not monthly_forecasts:
+                logger.warning("No monthly forecasts found")
+                return []
+            
+            # Группируем заявки по направлению и неделе
+            requests['created_at'] = pd.to_datetime(requests['created_at'])
+            requests['week'] = requests['created_at'].dt.to_period('W')
+            
+            table_rows = []
+            
+            for forecast in monthly_forecasts:
+                dest = forecast.destination
+                dest_requests = requests[requests['destination_city'] == dest]
+                
+                if dest_requests.empty:
+                    continue
+                
+                # Рассчитываем средний недельный спрос за последние 4 недели
+                weekly_counts = dest_requests.groupby('week').size()
+                if len(weekly_counts) > 0:
+                    current_demand_per_week = int(weekly_counts.mean())
+                else:
+                    current_demand_per_week = 0
+                
+                # Прогноз на неделю = прогноз на месяц / 4.3 (среднее количество недель в месяце)
+                predicted_demand_per_week = max(0, int(forecast.predicted_demand / 4.3))
+                
+                # Рассчитываем изменение в процентах
+                if current_demand_per_week > 0:
+                    change_percent = ((predicted_demand_per_week - current_demand_per_week) / current_demand_per_week) * 100
+                else:
+                    change_percent = 100.0 if predicted_demand_per_week > 0 else 0.0
+                
+                # Округляем до 1 знака после запятой
+                change_percent = round(change_percent, 1)
+                
+                # Переводим тренд на русский
+                trend_ru = {
+                    "rising": "Растущий",
+                    "falling": "Падающий",
+                    "stable": "Стабильный"
+                }.get(forecast.trend, "Стабильный")
+                
+                table_rows.append(
+                    DemandForecastTableRow(
+                        destination=dest,
+                        current_demand_per_week=current_demand_per_week,
+                        predicted_demand_per_week=predicted_demand_per_week,
+                        change_percent=round(change_percent, 1),
+                        trend=trend_ru,
+                        confidence=forecast.confidence,
+                        recommendation=forecast.recommendation
+                    )
+                )
+            
+            logger.info(f"Generated {len(table_rows)} table rows")
+            
+            # Сортируем по прогнозируемому спросу (по убыванию)
+            result = sorted(table_rows, key=lambda x: x.predicted_demand_per_week, reverse=True)
+            logger.info(f"Returning {len(result)} sorted rows")
+            return result
+        except Exception as e:
+            logger.error(f"Error in get_demand_forecast_table: {e}", exc_info=True)
+            raise
     
     def _generate_recommendation(
         self, 

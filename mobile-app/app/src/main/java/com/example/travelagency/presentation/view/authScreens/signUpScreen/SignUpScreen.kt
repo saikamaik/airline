@@ -92,7 +92,9 @@ fun SignUpScreen(
                 onValueChange = { viewModel.postUiEvent(SignUpUiEvent.OnFirstNameChange(it)) },
                 label = { Text("Имя *") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                isError = uiState.value.firstNameError != null,
+                supportingText = uiState.value.firstNameError?.let { { Text(it) } }
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -102,7 +104,9 @@ fun SignUpScreen(
                 onValueChange = { viewModel.postUiEvent(SignUpUiEvent.OnLastNameChange(it)) },
                 label = { Text("Фамилия *") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                isError = uiState.value.lastNameError != null,
+                supportingText = uiState.value.lastNameError?.let { { Text(it) } }
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -113,7 +117,9 @@ fun SignUpScreen(
                 label = { Text("Email *") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                isError = uiState.value.emailError != null,
+                supportingText = uiState.value.emailError?.let { { Text(it) } }
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -134,7 +140,9 @@ fun SignUpScreen(
                 onValueChange = { viewModel.postUiEvent(SignUpUiEvent.OnUsernameChange(it)) },
                 label = { Text("Логин *") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                isError = uiState.value.usernameError != null,
+                supportingText = uiState.value.usernameError?.let { { Text(it) } }
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -148,6 +156,8 @@ fun SignUpScreen(
                 visualTransformation = if (uiState.value.isPasswordVisible)
                     VisualTransformation.None else PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                isError = uiState.value.passwordError != null,
+                supportingText = uiState.value.passwordError?.let { { Text(it) } },
                 trailingIcon = {
                     IconButton(
                         onClick = { viewModel.postUiEvent(SignUpUiEvent.TogglePasswordVisibility) }

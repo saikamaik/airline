@@ -7,10 +7,13 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.example.travelagency.data.api.ApiService
 import com.example.travelagency.data.model.AuthResponse
+import com.example.travelagency.data.model.ErrorResponse
 import com.example.travelagency.data.model.LoginRequest
 import com.example.travelagency.data.model.RegisterRequest
 import com.example.travelagency.data.model.Response
 import com.example.travelagency.data.model.UserModel
+import com.google.gson.Gson
+import com.google.gson.JsonSyntaxException
 import com.example.travelagency.domain.AuthRepository
 import com.example.travelagency.domain.SignInResponse
 import com.example.travelagency.domain.SignUpResponse
@@ -94,8 +97,10 @@ class AuthRepositoryImpl @Inject constructor(
                 Log.d(TAG, "User registered successfully: $username")
                 emit(Response.Success(authResponse))
             } else {
-                val errorMsg = "Ошибка регистрации"
-                Log.w(TAG, "Registration failed: ${response.code()} - ${response.message()}")
+                // Парсим ошибку из JSON ответа
+                val errorMsg = parseErrorResponse(response.errorBody()?.string())
+                    ?: "Ошибка регистрации"
+                Log.w(TAG, "Registration failed: ${response.code()} - $errorMsg")
                 emit(Response.Failure(e = errorMsg))
             }
         } catch (e: Exception) {
@@ -133,6 +138,22 @@ class AuthRepositoryImpl @Inject constructor(
 
     override fun isLoggedIn(): Boolean {
         return getToken() != null
+    }
+
+    /**
+     * Парсит JSON ответ с ошибкой от сервера
+     */
+    private fun parseErrorResponse(errorBody: String?): String? {
+        if (errorBody.isNullOrBlank()) return null
+        
+        return try {
+            val gson = Gson()
+            val errorResponse = gson.fromJson(errorBody, ErrorResponse::class.java)
+            errorResponse.error ?: errorResponse.message
+        } catch (e: JsonSyntaxException) {
+            Log.w(TAG, "Failed to parse error response: $errorBody", e)
+            null
+        }
     }
 
 }

@@ -99,6 +99,17 @@ class ModelMetrics(BaseModel):
     weights: Dict[str, float]
 
 
+class DemandForecastTableRow(BaseModel):
+    """Строка таблицы прогноза спроса"""
+    destination: str
+    current_demand_per_week: int  # Текущий спрос (заявок/неделю)
+    predicted_demand_per_week: int  # Прогноз (заявок/неделю)
+    change_percent: float  # Изменение в процентах
+    trend: str  # "Растущий", "Стабильный", "Падающий"
+    confidence: float  # Уверенность (0-1)
+    recommendation: str  # Рекомендация
+
+
 class AnalyticsResponse(BaseModel):
     """Общий ответ аналитики"""
     period: str
