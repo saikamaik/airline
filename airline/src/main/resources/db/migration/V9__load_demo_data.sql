@@ -47,40 +47,104 @@ ON CONFLICT DO NOTHING;
 -- ============================================================
 
 -- Вставляем туры только если их еще нет
-INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
-SELECT * FROM (VALUES
--- Пляжные туры
-('Отдых в Сочи', 'Комфортабельный отель на берегу моря, завтраки включены', 45000.00, 7, 'Сочи', true, NOW() - INTERVAL '30 days'),
-('Сочи Премиум', '5* отель, все включено, СПА', 75000.00, 7, 'Сочи', true, NOW() - INTERVAL '25 days'),
-('Сочи, Красная Поляна', 'Горнолыжный курорт, подъемники включены', 52000.00, 6, 'Сочи', true, NOW() - INTERVAL '20 days'),
-('Турция, Анталия', 'Все включено, 5 звезд, аквапарк на территории', 85000.00, 10, 'Анталия', true, NOW() - INTERVAL '25 days'),
-('Турция Стандарт', '4* отель, все включено', 75000.00, 7, 'Анталия', true, NOW() - INTERVAL '20 days'),
-('Турция, Кемер', 'Пляжный отдых, экскурсии', 78000.00, 8, 'Анталия', true, NOW() - INTERVAL '15 days'),
-('Египет, Хургада', 'Красное море, дайвинг, все включено', 65000.00, 8, 'Хургада', true, NOW() - INTERVAL '20 days'),
-('Египет Эконом', '3* отель, завтраки', 55000.00, 7, 'Хургада', true, NOW() - INTERVAL '15 days'),
-('ОАЭ, Дубай', 'Роскошный отдых, шоппинг, экскурсии', 120000.00, 7, 'Дубай', true, NOW() - INTERVAL '15 days'),
-('Дубай Стандарт', '4* отель, завтраки', 100000.00, 6, 'Дубай', true, NOW() - INTERVAL '10 days'),
-('Тайланд, Пхукет', 'Экзотика, пляжи, экскурсии', 95000.00, 12, 'Пхукет', true, NOW() - INTERVAL '10 days'),
-('Мальдивы', 'Райские острова, все включено', 150000.00, 10, 'Мальдивы', true, NOW() - INTERVAL '5 days'),
-('Бали', 'Экзотический отдых, пляжи, храмы', 110000.00, 14, 'Бали', true, NOW() - INTERVAL '3 days'),
-
--- Экскурсионные туры
-('Париж и Версаль', 'Экскурсионный тур по столице Франции', 78000.00, 5, 'Париж', true, NOW() - INTERVAL '28 days'),
-('Рим и Ватикан', 'Классический тур по Вечному городу', 72000.00, 6, 'Рим', true, NOW() - INTERVAL '22 days'),
-('Прага - сердце Европы', 'Романтический тур по столице Чехии', 55000.00, 4, 'Прага', true, NOW() - INTERVAL '18 days'),
-('Барселона и Коста-Брава', 'Испания: архитектура и пляжи', 68000.00, 7, 'Барселона', true, NOW() - INTERVAL '12 days'),
-('Вена и Зальцбург', 'Музыкальная столица Европы', 65000.00, 5, 'Вена', true, NOW() - INTERVAL '8 days'),
-('Стамбул - мост между Европой и Азией', 'Экскурсии, базары, мечети', 60000.00, 6, 'Стамбул', true, NOW() - INTERVAL '6 days'),
-('Амстердам', 'Каналы, музеи, велосипеды', 70000.00, 4, 'Амстердам', true, NOW() - INTERVAL '4 days'),
-
--- Горнолыжные туры
-('Австрия, Инсбрук', 'Альпы, горные лыжи, традиционная кухня', 89000.00, 7, 'Инсбрук', true, NOW() - INTERVAL '6 days'),
-
--- Неактивные туры (для демонстрации фильтрации)
-('Мальдивы (сезон окончен)', 'Райские острова, сезон закрыт', 150000.00, 10, 'Мальдивы', false, NOW() - INTERVAL '60 days'),
-('Бали (недоступен)', 'Экзотический отдых, временно недоступен', 110000.00, 14, 'Бали', false, NOW() - INTERVAL '45 days')
-) AS v(name, description, price, duration_days, destination_city, active, created_at)
-WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE tours.name = v.name);
+DO $$
+BEGIN
+    -- Пляжные туры
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Отдых в Сочи', 'Комфортабельный отель на берегу моря, завтраки включены', 45000.00, 7, 'Сочи', true, NOW() - INTERVAL '30 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Отдых в Сочи');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Сочи Премиум', '5* отель, все включено, СПА', 75000.00, 7, 'Сочи', true, NOW() - INTERVAL '25 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Сочи Премиум');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Сочи, Красная Поляна', 'Горнолыжный курорт, подъемники включены', 52000.00, 6, 'Сочи', true, NOW() - INTERVAL '20 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Сочи, Красная Поляна');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Турция, Анталия', 'Все включено, 5 звезд, аквапарк на территории', 85000.00, 10, 'Анталия', true, NOW() - INTERVAL '25 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Турция, Анталия');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Турция Стандарт', '4* отель, все включено', 75000.00, 7, 'Анталия', true, NOW() - INTERVAL '20 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Турция Стандарт');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Турция, Кемер', 'Пляжный отдых, экскурсии', 78000.00, 8, 'Анталия', true, NOW() - INTERVAL '15 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Турция, Кемер');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Египет, Хургада', 'Красное море, дайвинг, все включено', 65000.00, 8, 'Хургада', true, NOW() - INTERVAL '20 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Египет, Хургада');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Египет Эконом', '3* отель, завтраки', 55000.00, 7, 'Хургада', true, NOW() - INTERVAL '15 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Египет Эконом');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'ОАЭ, Дубай', 'Роскошный отдых, шоппинг, экскурсии', 120000.00, 7, 'Дубай', true, NOW() - INTERVAL '15 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'ОАЭ, Дубай');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Дубай Стандарт', '4* отель, завтраки', 100000.00, 6, 'Дубай', true, NOW() - INTERVAL '10 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Дубай Стандарт');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Тайланд, Пхукет', 'Экзотика, пляжи, экскурсии', 95000.00, 12, 'Пхукет', true, NOW() - INTERVAL '10 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Тайланд, Пхукет');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Мальдивы', 'Райские острова, все включено', 150000.00, 10, 'Мальдивы', true, NOW() - INTERVAL '5 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Мальдивы');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Бали', 'Экзотический отдых, пляжи, храмы', 110000.00, 14, 'Бали', true, NOW() - INTERVAL '3 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Бали');
+    
+    -- Экскурсионные туры
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Париж и Версаль', 'Экскурсионный тур по столице Франции', 78000.00, 5, 'Париж', true, NOW() - INTERVAL '28 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Париж и Версаль');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Рим и Ватикан', 'Классический тур по Вечному городу', 72000.00, 6, 'Рим', true, NOW() - INTERVAL '22 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Рим и Ватикан');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Прага - сердце Европы', 'Романтический тур по столице Чехии', 55000.00, 4, 'Прага', true, NOW() - INTERVAL '18 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Прага - сердце Европы');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Барселона и Коста-Брава', 'Испания: архитектура и пляжи', 68000.00, 7, 'Барселона', true, NOW() - INTERVAL '12 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Барселона и Коста-Брава');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Вена и Зальцбург', 'Музыкальная столица Европы', 65000.00, 5, 'Вена', true, NOW() - INTERVAL '8 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Вена и Зальцбург');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Стамбул - мост между Европой и Азией', 'Экскурсии, базары, мечети', 60000.00, 6, 'Стамбул', true, NOW() - INTERVAL '6 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Стамбул - мост между Европой и Азией');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Амстердам', 'Каналы, музеи, велосипеды', 70000.00, 4, 'Амстердам', true, NOW() - INTERVAL '4 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Амстердам');
+    
+    -- Горнолыжные туры
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Австрия, Инсбрук', 'Альпы, горные лыжи, традиционная кухня', 89000.00, 7, 'Инсбрук', true, NOW() - INTERVAL '6 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Австрия, Инсбрук');
+    
+    -- Неактивные туры (для демонстрации фильтрации)
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Мальдивы (сезон окончен)', 'Райские острова, сезон закрыт', 150000.00, 10, 'Мальдивы', false, NOW() - INTERVAL '60 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Мальдивы (сезон окончен)');
+    
+    INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+    SELECT 'Бали (недоступен)', 'Экзотический отдых, временно недоступен', 110000.00, 14, 'Бали', false, NOW() - INTERVAL '45 days'
+    WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE name = 'Бали (недоступен)');
+END $$;
 
 -- ============================================================
 -- 3. КЛИЕНТЫ (27 клиентов, включая VIP)
@@ -266,7 +330,8 @@ BEGIN
         -- Фильтруем NULL значения из массива туров
         destination_tours := ARRAY(SELECT unnest(destination_tours) WHERE unnest IS NOT NULL);
         
-        IF array_length(destination_tours, 1) IS NULL OR client_count IS NULL THEN
+        -- Проверяем, что есть туры и клиенты
+        IF array_length(destination_tours, 1) IS NULL OR array_length(destination_tours, 1) = 0 OR client_count IS NULL OR client_count = 0 THEN
             CONTINUE;
         END IF;
         
@@ -276,10 +341,24 @@ BEGIN
             request_date := NOW() - (month_num || ' months')::INTERVAL - floor(random() * 28)::INTEGER * INTERVAL '1 day';
             
             -- Выбираем случайный тур из доступных для сезона
-            j := 1 + floor(random() * array_length(destination_tours, 1))::INTEGER;
+            IF array_length(destination_tours, 1) > 0 THEN
+                j := 1 + floor(random() * array_length(destination_tours, 1))::INTEGER;
+                IF j > array_length(destination_tours, 1) THEN
+                    j := array_length(destination_tours, 1);
+                END IF;
+            ELSE
+                CONTINUE;
+            END IF;
             
             -- Выбираем случайного клиента
-            client_idx := 1 + floor(random() * client_count)::INTEGER;
+            IF client_count > 0 THEN
+                client_idx := 1 + floor(random() * client_count)::INTEGER;
+                IF client_idx > client_count THEN
+                    client_idx := client_count;
+                END IF;
+            ELSE
+                CONTINUE;
+            END IF;
             
             -- Выбираем статус с учетом весов
             total_weight := 0;
@@ -319,37 +398,38 @@ BEGIN
                 selected_employee_id := CASE WHEN random() < 0.5 THEN employee1_id ELSE employee2_id END;
             END IF;
             
-            -- Вставляем заявку
-            INSERT INTO bookings.client_requests (
-                tour_id,
-                user_name,
-                user_email,
-                user_phone,
-                status,
-                priority,
-                comment,
-                client_id,
-                employee_id,
-                created_at
-            ) VALUES (
-                destination_tours[j],
-                (SELECT first_name || ' ' || last_name FROM bookings.clients WHERE id = client_ids[client_idx]),
-                (SELECT email FROM bookings.clients WHERE id = client_ids[client_idx]),
-                (SELECT phone FROM bookings.clients WHERE id = client_ids[client_idx]),
-                selected_status,
-                selected_priority,
-                CASE floor(random() * 5)::INTEGER
-                    WHEN 0 THEN 'Интересует тур на выходные'
-                    WHEN 1 THEN 'Хочу узнать больше деталей'
-                    WHEN 2 THEN 'Готов к бронированию'
-                    WHEN 3 THEN 'Нужна консультация'
-                    ELSE NULL
-                END,
-                client_ids[client_idx],
-                selected_employee_id,
-                request_date
-            )
-            ON CONFLICT DO NOTHING;
+            -- Вставляем заявку только если тур и клиент существуют
+            IF destination_tours[j] IS NOT NULL AND client_ids[client_idx] IS NOT NULL THEN
+                INSERT INTO bookings.client_requests (
+                    tour_id,
+                    user_name,
+                    user_email,
+                    user_phone,
+                    status,
+                    priority,
+                    comment,
+                    client_id,
+                    employee_id,
+                    created_at
+                ) VALUES (
+                    destination_tours[j],
+                    (SELECT first_name || ' ' || last_name FROM bookings.clients WHERE id = client_ids[client_idx]),
+                    (SELECT email FROM bookings.clients WHERE id = client_ids[client_idx]),
+                    (SELECT phone FROM bookings.clients WHERE id = client_ids[client_idx]),
+                    selected_status,
+                    selected_priority,
+                    CASE floor(random() * 5)::INTEGER
+                        WHEN 0 THEN 'Интересует тур на выходные'
+                        WHEN 1 THEN 'Хочу узнать больше деталей'
+                        WHEN 2 THEN 'Готов к бронированию'
+                        WHEN 3 THEN 'Нужна консультация'
+                        ELSE NULL
+                    END,
+                    client_ids[client_idx],
+                    selected_employee_id,
+                    request_date
+                );
+            END IF;
         END LOOP;
     END LOOP;
     
