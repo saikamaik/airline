@@ -42,7 +42,6 @@ export default function EmployeesPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
   const [showDialog, setShowDialog] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<EmployeeDto | null>(null);
   const [showSalesDialog, setShowSalesDialog] = useState(false);
@@ -72,7 +71,6 @@ export default function EmployeesPage() {
       const data = await employeesApi.getAll(activeFilter, page, 20);
       setEmployees(data.content);
       setTotalPages(data.totalPages);
-      setTotalElements(data.totalElements);
     } catch (error) {
       console.error('Error loading employees:', error);
     } finally {
