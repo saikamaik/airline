@@ -46,7 +46,9 @@ ON CONFLICT DO NOTHING;
 -- 2. ТУРЫ (22 тура различных категорий)
 -- ============================================================
 
-INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at) VALUES
+-- Вставляем туры только если их еще нет
+INSERT INTO bookings.tours (name, description, price, duration_days, destination_city, active, created_at)
+SELECT * FROM (VALUES
 -- Пляжные туры
 ('Отдых в Сочи', 'Комфортабельный отель на берегу моря, завтраки включены', 45000.00, 7, 'Сочи', true, NOW() - INTERVAL '30 days'),
 ('Сочи Премиум', '5* отель, все включено, СПА', 75000.00, 7, 'Сочи', true, NOW() - INTERVAL '25 days'),
@@ -77,8 +79,8 @@ INSERT INTO bookings.tours (name, description, price, duration_days, destination
 -- Неактивные туры (для демонстрации фильтрации)
 ('Мальдивы (сезон окончен)', 'Райские острова, сезон закрыт', 150000.00, 10, 'Мальдивы', false, NOW() - INTERVAL '60 days'),
 ('Бали (недоступен)', 'Экзотический отдых, временно недоступен', 110000.00, 14, 'Бали', false, NOW() - INTERVAL '45 days')
-
-ON CONFLICT DO NOTHING;
+) AS v(name, description, price, duration_days, destination_city, active, created_at)
+WHERE NOT EXISTS (SELECT 1 FROM bookings.tours WHERE tours.name = v.name);
 
 -- ============================================================
 -- 3. КЛИЕНТЫ (27 клиентов, включая VIP)
@@ -177,7 +179,10 @@ DECLARE
     employee2_id BIGINT;
     
     -- Переменные для генерации
-    i INTEGER;
+    request_idx INTEGER;
+    weight_idx INTEGER;
+    status_idx INTEGER;
+    priority_idx INTEGER;
     j INTEGER;
     request_date DATE;
     month_num INTEGER;
@@ -266,7 +271,7 @@ BEGIN
         END IF;
         
         -- Генерируем заявки для месяца
-        FOR i IN 1..requests_per_month LOOP
+        FOR request_idx IN 1..requests_per_month LOOP
             -- Случайная дата в пределах месяца
             request_date := NOW() - (month_num || ' months')::INTERVAL - floor(random() * 28)::INTEGER * INTERVAL '1 day';
             
@@ -278,32 +283,32 @@ BEGIN
             
             -- Выбираем статус с учетом весов
             total_weight := 0;
-            FOR i IN 1..array_length(status_weights, 1) LOOP
-                total_weight := total_weight + status_weights[i];
+            FOR weight_idx IN 1..array_length(status_weights, 1) LOOP
+                total_weight := total_weight + status_weights[weight_idx];
             END LOOP;
             random_val := floor(random() * total_weight)::INTEGER;
             cumulative := 0;
             selected_status := statuses[1];
-            FOR i IN 1..array_length(statuses, 1) LOOP
-                cumulative := cumulative + status_weights[i];
+            FOR status_idx IN 1..array_length(statuses, 1) LOOP
+                cumulative := cumulative + status_weights[status_idx];
                 IF random_val < cumulative THEN
-                    selected_status := statuses[i];
+                    selected_status := statuses[status_idx];
                     EXIT;
                 END IF;
             END LOOP;
             
             -- Выбираем приоритет с учетом весов
             total_weight := 0;
-            FOR i IN 1..array_length(priority_weights, 1) LOOP
-                total_weight := total_weight + priority_weights[i];
+            FOR weight_idx IN 1..array_length(priority_weights, 1) LOOP
+                total_weight := total_weight + priority_weights[weight_idx];
             END LOOP;
             random_val := floor(random() * total_weight)::INTEGER;
             cumulative := 0;
             selected_priority := priorities[1];
-            FOR i IN 1..array_length(priorities, 1) LOOP
-                cumulative := cumulative + priority_weights[i];
+            FOR priority_idx IN 1..array_length(priorities, 1) LOOP
+                cumulative := cumulative + priority_weights[priority_idx];
                 IF random_val < cumulative THEN
-                    selected_priority := priorities[i];
+                    selected_priority := priorities[priority_idx];
                     EXIT;
                 END IF;
             END LOOP;
