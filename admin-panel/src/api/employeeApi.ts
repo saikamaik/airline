@@ -1,6 +1,6 @@
 import apiClient from './client';
 import { EmployeeDto, EmployeeSalesDto } from './employees';
-import { ClientRequestDto, Page } from './requests';
+import { ClientRequestDto, Page } from '../types';
 
 export const employeeApi = {
   getProfile: async (): Promise<EmployeeDto> => {

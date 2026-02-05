@@ -16,7 +16,7 @@ import {
 } from '@mui/material';
 import { Search } from '@mui/icons-material';
 import { flightsApi } from '../api/flights';
-import { FlightDto, Page } from '../types';
+import { FlightDto } from '../types';
 
 export default function FlightsPage() {
   const [flights, setFlights] = useState<FlightDto[]>([]);

@@ -48,7 +48,6 @@ export default function Layout() {
   const location = useLocation();
   const username = authApi.getCurrentUser();
   const isAdmin = authApi.hasRole('ROLE_ADMIN');
-  const isEmployee = authApi.hasRole('ROLE_EMPLOYEE');
   const menuItems = isAdmin ? adminMenuItems : employeeMenuItems;
 
   const handleDrawerToggle = () => {
