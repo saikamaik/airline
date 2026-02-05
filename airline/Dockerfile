@@ -22,5 +22,8 @@ COPY --from=build /app/target/*.jar app.jar
 # Открываем порт
 EXPOSE 8080
 
-# Запуск приложения
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Переменные окружения для оптимизации памяти
+ENV JAVA_OPTS="-Xmx512m -Xms256m -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+
+# Запуск приложения с ограничениями памяти
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
