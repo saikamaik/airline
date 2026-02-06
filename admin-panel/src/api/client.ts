@@ -3,11 +3,28 @@ import axios from 'axios';
 // Используем переменную окружения для продакшна, или относительный путь для разработки
 // Убираем trailing slash и /api если они есть, так как пути уже содержат нужные префиксы
 const rawUrl = import.meta.env.VITE_API_URL || '/api';
-const API_BASE_URL = rawUrl.endsWith('/api') 
-  ? rawUrl.replace(/\/api$/, '') 
-  : rawUrl.endsWith('/') 
-    ? rawUrl.slice(0, -1) 
-    : rawUrl;
+
+// Обработка URL: если это не относительный путь (/api), то должен быть абсолютный URL
+let processedUrl = rawUrl;
+if (processedUrl !== '/api') {
+  // Если URL не начинается с http:// или https://, добавляем https://
+  if (!processedUrl.startsWith('http://') && !processedUrl.startsWith('https://')) {
+    processedUrl = `https://${processedUrl}`;
+  }
+  // Убираем /api в конце если есть
+  if (processedUrl.endsWith('/api')) {
+    processedUrl = processedUrl.replace(/\/api$/, '');
+  }
+  // Убираем trailing slash
+  if (processedUrl.endsWith('/')) {
+    processedUrl = processedUrl.slice(0, -1);
+  }
+} else {
+  // Для относительного пути /api оставляем как есть
+  processedUrl = '/api';
+}
+
+const API_BASE_URL = processedUrl;
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
