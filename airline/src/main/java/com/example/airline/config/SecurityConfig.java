@@ -52,14 +52,21 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(request -> {
                     var corsConfig = new org.springframework.web.cors.CorsConfiguration();
+                    String origin = request.getHeader("Origin");
+                    logger.info("CORS request from origin: {}", origin);
+                    
                     // Разрешаем все localhost порты для разработки через паттерн
                     // 10.0.2.2 - это специальный адрес Android эмулятора для доступа к localhost хоста
                     // Разрешаем все домены Vercel для продакшена
-                    corsConfig.setAllowedOriginPatterns(java.util.List.of(
+                    // Паттерны поддерживают wildcards: * для любого поддомена
+                    java.util.List<String> allowedPatterns = java.util.List.of(
                         "http://localhost:*",
                         "http://10.0.2.2:*",
                         "https://*.vercel.app"
-                    ));
+                    );
+                    corsConfig.setAllowedOriginPatterns(allowedPatterns);
+                    logger.info("CORS allowed patterns: {}", allowedPatterns);
+                    
                     corsConfig.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
                     corsConfig.setAllowedHeaders(java.util.List.of("*"));
                     corsConfig.setAllowCredentials(true);
