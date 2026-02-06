@@ -38,7 +38,32 @@ export default function LoginPage() {
       navigate(isEmployee ? '/employee-dashboard' : '/dashboard');
     } catch (err: any) {
       console.error('=== LoginPage: Ошибка входа:', err);
-      const errorMessage = err.response?.data?.error || err.response?.data || err.message || 'Ошибка входа. Проверьте логин и пароль.';
+      console.error('=== LoginPage: Полная информация об ошибке:', {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        config: {
+          url: err.config?.url,
+          baseURL: err.config?.baseURL,
+          method: err.config?.method,
+        },
+        message: err.message
+      });
+      
+      let errorMessage = 'Ошибка входа. Проверьте логин и пароль.';
+      
+      if (err.response?.status === 405) {
+        errorMessage = `Метод не разрешен (405). Проверьте, что бэкенд доступен по адресу: ${err.config?.baseURL || 'не указан'}`;
+      } else if (err.response?.status === 404) {
+        errorMessage = `Эндпоинт не найден (404). URL: ${err.config?.baseURL}${err.config?.url}`;
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (typeof err.response?.data === 'string') {
+        errorMessage = err.response.data;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
       setError(errorMessage);
     } finally {
       setLoading(false);
