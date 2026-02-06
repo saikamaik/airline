@@ -38,7 +38,38 @@ export default function LoginPage() {
       navigate(isEmployee ? '/employee-dashboard' : '/dashboard');
     } catch (err: any) {
       console.error('=== LoginPage: Ошибка входа:', err);
-      const errorMessage = err.response?.data?.error || err.response?.data || err.message || 'Ошибка входа. Проверьте логин и пароль.';
+      console.error('=== LoginPage: Полная информация об ошибке:', {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data,
+        config: {
+          url: err.config?.url,
+          baseURL: err.config?.baseURL,
+          method: err.config?.method,
+        },
+        message: err.message
+      });
+      
+      let errorMessage = 'Ошибка входа. Проверьте логин и пароль.';
+      
+      if (err.response?.status === 405) {
+        const fullUrl = err.config?.baseURL && !err.config.baseURL.startsWith('http')
+          ? `${window.location.origin}${err.config.baseURL}${err.config.url}`
+          : `${err.config?.baseURL || ''}${err.config?.url || ''}`;
+        errorMessage = `Метод не разрешен (405). Запрос идет на: ${fullUrl}. Проверьте, что переменная VITE_API_URL установлена в Vercel и указывает на бэкенд (например: https://your-backend.up.railway.app)`;
+      } else if (err.response?.status === 404) {
+        const fullUrl = err.config?.baseURL && !err.config.baseURL.startsWith('http')
+          ? `${window.location.origin}${err.config.baseURL}${err.config.url}`
+          : `${err.config?.baseURL || ''}${err.config?.url || ''}`;
+        errorMessage = `Эндпоинт не найден (404). URL: ${fullUrl}`;
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (typeof err.response?.data === 'string') {
+        errorMessage = err.response.data;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
       setError(errorMessage);
     } finally {
       setLoading(false);

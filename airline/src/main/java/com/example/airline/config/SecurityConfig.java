@@ -54,9 +54,11 @@ public class SecurityConfig {
                     var corsConfig = new org.springframework.web.cors.CorsConfiguration();
                     // Разрешаем все localhost порты для разработки через паттерн
                     // 10.0.2.2 - это специальный адрес Android эмулятора для доступа к localhost хоста
+                    // Разрешаем все домены Vercel для продакшена
                     corsConfig.setAllowedOriginPatterns(java.util.List.of(
                         "http://localhost:*",
-                        "http://10.0.2.2:*"
+                        "http://10.0.2.2:*",
+                        "https://*.vercel.app"
                     ));
                     corsConfig.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
                     corsConfig.setAllowedHeaders(java.util.List.of("*"));
