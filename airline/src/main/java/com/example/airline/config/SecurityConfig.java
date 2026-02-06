@@ -59,10 +59,15 @@ public class SecurityConfig {
                     // 10.0.2.2 - это специальный адрес Android эмулятора для доступа к localhost хоста
                     // Разрешаем все домены Vercel для продакшена
                     // Паттерны поддерживают wildcards: * для любого поддомена
+                    // Используем более широкий паттерн для покрытия всех вариантов доменов Vercel:
+                    // - production: airline-black.vercel.app
+                    // - preview: airline-pixk86c3q-saikamaiks-projects.vercel.app
+                    // - branch: airline-git-branch-name.vercel.app
                     java.util.List<String> allowedPatterns = java.util.List.of(
                         "http://localhost:*",
                         "http://10.0.2.2:*",
-                        "https://*.vercel.app"
+                        "https://*.vercel.app",
+                        "https://*--*.vercel.app"  // Для preview доменов с дефисами
                     );
                     corsConfig.setAllowedOriginPatterns(allowedPatterns);
                     logger.info("CORS allowed patterns: {}", allowedPatterns);
