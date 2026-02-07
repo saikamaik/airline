@@ -31,9 +31,12 @@ public class Client {
 
     private String phone;
 
+    // birthDate не используется, оставлено для совместимости, но не сохраняется в БД
+    @Transient
     private LocalDate birthDate;
 
-    @Column(columnDefinition = "TEXT")
+    // notes не используется, оставлено для совместимости, но не сохраняется в БД
+    @Transient
     private String notes; // Заметки о клиенте
 
     @Column(nullable = false)
@@ -46,6 +49,7 @@ public class Client {
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
+    @Transient
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
