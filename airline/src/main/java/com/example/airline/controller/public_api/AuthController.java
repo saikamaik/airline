@@ -55,22 +55,14 @@ public class AuthController {
      */
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
-        org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(AuthController.class);
-        logger.info("=== AuthController: Попытка регистрации для пользователя: {}, email: {}", 
-            request.getUsername(), request.getEmail());
-        
         try {
             AuthResponse response = authService.register(request);
-            logger.info("=== AuthController: Регистрация успешна для пользователя: {}", request.getUsername());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (IllegalArgumentException e) {
-            logger.warn("=== AuthController: Ошибка валидации при регистрации: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
                 Map.of("error", e.getMessage())
             );
         } catch (Exception e) {
-            logger.error("=== AuthController: Ошибка регистрации для пользователя {}: {}", 
-                request.getUsername(), e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                 Map.of("error", "Ошибка регистрации: " + e.getMessage())
             );

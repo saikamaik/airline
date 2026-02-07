@@ -8,9 +8,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.travelagency.presentation.view.authScreens.signInScreen.SignInScreen
 import com.example.travelagency.presentation.view.authScreens.signUpScreen.SignUpScreen
-import com.example.travelagency.presentation.view.homeScreen.HomeScreen
 import com.example.travelagency.presentation.view.launchScreen.LaunchScreen
-import com.example.travelagency.presentation.view.myRequestsScreen.MyRequestsScreen
+import com.example.travelagency.presentation.view.mainScreen.MainScreen
 import com.example.travelagency.presentation.view.requestScreen.RequestScreen
 import com.example.travelagency.presentation.view.tourInfoScreen.TourInfoScreen
 
@@ -35,7 +34,7 @@ fun Navigation(navController: NavHostController) {
         }
 
         composable(Screen.Home.route) {
-            HomeScreen(navController)
+            MainScreen(navController)
         }
 
         composable(
@@ -54,10 +53,6 @@ fun Navigation(navController: NavHostController) {
             })
         ) {
             RequestScreen(navController)
-        }
-
-        composable(Screen.MyRequests.route) {
-            MyRequestsScreen(navController)
         }
 
     }

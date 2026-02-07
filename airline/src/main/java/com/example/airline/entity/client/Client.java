@@ -49,8 +49,8 @@ public class Client {
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
+    // updatedAt не сохраняется в БД (колонки нет в таблице)
     @Transient
-    @UpdateTimestamp
     private LocalDateTime updatedAt;
 
     public Client() {

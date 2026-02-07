@@ -86,84 +86,59 @@ public class AuthService {
      */
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(AuthService.class);
-        logger.info("=== AuthService: Попытка регистрации пользователя: {}", request.getUsername());
-        
-        try {
-            // Проверяем, что username и email не заняты
-            if (userRepository.existsByUsername(request.getUsername())) {
-                logger.warn("=== AuthService: Пользователь с username {} уже существует", request.getUsername());
-                throw new IllegalArgumentException("Пользователь с таким именем уже существует");
-            }
-            if (userRepository.existsByEmail(request.getEmail())) {
-                logger.warn("=== AuthService: Пользователь с email {} уже существует", request.getEmail());
-                throw new IllegalArgumentException("Пользователь с таким email уже существует");
-            }
-            if (clientRepository.existsByEmail(request.getEmail())) {
-                logger.warn("=== AuthService: Клиент с email {} уже существует", request.getEmail());
-                throw new IllegalArgumentException("Клиент с таким email уже существует");
-            }
-            
-            // Получаем роль USER
-            logger.info("=== AuthService: Поиск роли ROLE_USER");
-            Role userRole = roleRepository.findByName(RoleName.ROLE_USER)
-                    .orElseThrow(() -> {
-                        logger.error("=== AuthService: Роль ROLE_USER не найдена в базе данных!");
-                        return new RuntimeException("Роль USER не найдена");
-                    });
-            logger.info("=== AuthService: Роль ROLE_USER найдена");
-            
-            // Создаем пользователя
-            logger.info("=== AuthService: Создание пользователя {}", request.getUsername());
-            User user = new User();
-            user.setUsername(request.getUsername());
-            user.setPassword(passwordEncoder.encode(request.getPassword()));
-            user.setEmail(request.getEmail());
-            user.setEnabled(true);
-            
-            Set<Role> roles = new HashSet<>();
-            roles.add(userRole);
-            user.setRoles(roles);
-            
-            user = userRepository.save(user);
-            logger.info("=== AuthService: Пользователь {} создан с ID {}", request.getUsername(), user.getId());
-            
-            // Создаем клиента
-            logger.info("=== AuthService: Создание клиента для пользователя {}", request.getUsername());
-            Client client = new Client();
-            client.setFirstName(request.getFirstName());
-            client.setLastName(request.getLastName());
-            client.setEmail(request.getEmail());
-            client.setPhone(request.getPhone());
-            client.setUser(user);
-            client.setActive(true);
-            client.setVipStatus(false);
-            
-            clientRepository.save(client);
-            logger.info("=== AuthService: Клиент создан для пользователя {}", request.getUsername());
-            
-            // Возвращаем токен для автоматического входа после регистрации
-            logger.info("=== AuthService: Аутентификация после регистрации для {}", request.getUsername());
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
-            );
-            
-            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-            String token = jwtUtil.generateToken(userDetails);
-            
-            List<String> roleNames = userDetails.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .collect(Collectors.toList());
-            
-            logger.info("=== AuthService: Регистрация успешна для пользователя {}, роли: {}", request.getUsername(), roleNames);
-            return new AuthResponse(token, userDetails.getUsername(), roleNames);
-        } catch (IllegalArgumentException e) {
-            logger.error("=== AuthService: Ошибка валидации при регистрации: {}", e.getMessage());
-            throw e;
-        } catch (Exception e) {
-            logger.error("=== AuthService: Неожиданная ошибка при регистрации пользователя {}: {}", request.getUsername(), e.getMessage(), e);
-            throw e;
+        // Проверяем, что username и email не заняты
+        if (userRepository.existsByUsername(request.getUsername())) {
+            throw new IllegalArgumentException("Пользователь с таким именем уже существует");
         }
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalArgumentException("Пользователь с таким email уже существует");
+        }
+        if (clientRepository.existsByEmail(request.getEmail())) {
+            throw new IllegalArgumentException("Клиент с таким email уже существует");
+        }
+        
+        // Получаем роль USER
+        Role userRole = roleRepository.findByName(RoleName.ROLE_USER)
+                .orElseThrow(() -> new RuntimeException("Роль USER не найдена"));
+        
+        // Создаем пользователя
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setEmail(request.getEmail());
+        user.setEnabled(true);
+        
+        Set<Role> roles = new HashSet<>();
+        roles.add(userRole);
+        user.setRoles(roles);
+        
+        user = userRepository.save(user);
+        
+        // Создаем клиента
+        Client client = new Client();
+        client.setFirstName(request.getFirstName());
+        client.setLastName(request.getLastName());
+        client.setEmail(request.getEmail());
+        client.setPhone(request.getPhone());
+        client.setUser(user);
+        client.setActive(true);
+        client.setVipStatus(false);
+        
+        clientRepository.save(client);
+        
+        // Возвращаем токен для автоматического входа после регистрации
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+        );
+        
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+        String token = jwtUtil.generateToken(userDetails);
+        
+        List<String> roleNames = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+        
+        return new AuthResponse(token, userDetails.getUsername(), roleNames);
     }
 }
 

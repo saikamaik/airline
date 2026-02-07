@@ -44,34 +44,30 @@ import com.example.travelagency.data.model.Response
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyRequestsScreen(
-    navHostController: NavHostController
+    navController: NavHostController,
+    paddingValues: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues(0.dp)
 ) {
     val viewModel: MyRequestsViewModel = hiltViewModel()
     val uiState = viewModel.uiState.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Мои заявки") },
-                navigationIcon = {
-                    IconButton(onClick = { navHostController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+    ) {
+        TopAppBar(
+            title = { Text("Мои заявки") },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                titleContentColor = MaterialTheme.colorScheme.onPrimary
             )
-        }
-    ) { padding ->
+        )
         when (val response = uiState.value.requestsResponse) {
             is Response.Loading -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(padding),
+                        .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator()
@@ -83,7 +79,7 @@ fun MyRequestsScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(padding),
+                            .padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -103,7 +99,7 @@ fun MyRequestsScreen(
                 } else {
                     LazyColumn(
                         contentPadding = PaddingValues(
-                            top = padding.calculateTopPadding() + 16.dp,
+                            top = 16.dp,
                             start = 16.dp,
                             end = 16.dp,
                             bottom = 16.dp
@@ -121,7 +117,7 @@ fun MyRequestsScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(padding),
+                        .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(

@@ -47,54 +47,30 @@ import com.example.travelagency.presentation.view.homeScreen.uiEvent.HomeUiEvent
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    navHostController: NavHostController
+    navHostController: NavHostController,
+    paddingValues: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues(0.dp)
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
     val uiState = viewModel.uiState.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "TravelAgency",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                actions = {
-                    IconButton(onClick = {
-                        navHostController.navigate(Screen.MyRequests.route)
-                    }) {
-                        Icon(
-                            Icons.Default.List,
-                            contentDescription = "Мои заявки",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                    IconButton(onClick = {
-                        navHostController.navigate(Screen.SignIn.route) {
-                            popUpTo(Screen.Home.route) { inclusive = true }
-                        }
-                    }) {
-                        Icon(
-                            Icons.Default.Person,
-                            contentDescription = "Профиль",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+    ) {
+        // TopBar
+        TopAppBar(
+            title = {
+                Text(
+                    text = "TravelAgency",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                titleContentColor = MaterialTheme.colorScheme.onPrimary
             )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
+        )
             // Search bar
             OutlinedTextField(
                 value = uiState.value.searchQuery,
