@@ -22,8 +22,9 @@ RUN mkdir -p ./models
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
-# Порт
+# Порт (Railway автоматически установит переменную PORT)
+# Используем 8000 по умолчанию, но Railway может установить свой порт
 EXPOSE 8000
 
-# Запуск
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Запуск (используем переменную PORT для Railway, по умолчанию 8000)
+CMD sh -c "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"
