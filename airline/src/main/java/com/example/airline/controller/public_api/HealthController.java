@@ -45,10 +45,17 @@ public class HealthController {
     public ResponseEntity<Map<String, String>> testHash(@RequestParam(defaultValue = "password123") String password) {
         String hash = passwordEncoder.encode(password);
         boolean matches = passwordEncoder.matches(password, hash);
+        
+        // Проверяем существующий хеш из БД
+        String existingHash = "$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iwy7p8.O";
+        boolean existingMatches = passwordEncoder.matches(password, existingHash);
+        
         return ResponseEntity.ok(Map.of(
             "password", password,
-            "hash", hash,
-            "matches", String.valueOf(matches),
+            "new_hash", hash,
+            "new_hash_matches", String.valueOf(matches),
+            "existing_hash", existingHash,
+            "existing_hash_matches", String.valueOf(existingMatches),
             "length", String.valueOf(hash.length())
         ));
     }
