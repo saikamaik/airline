@@ -50,6 +50,21 @@ public class AuthService {
     }
 
     public AuthResponse authenticate(AuthRequest request) {
+        org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(AuthService.class);
+        logger.info("=== AuthService: Попытка аутентификации для пользователя: {}", request.getUsername());
+        logger.info("=== AuthService: Длина пароля в запросе: {}", request.getPassword() != null ? request.getPassword().length() : 0);
+        
+        // Проверяем пароль вручную для диагностики
+        User user = userRepository.findByUsername(request.getUsername()).orElse(null);
+        if (user != null) {
+            logger.info("=== AuthService: Пароль из БД (первые 20 символов): {}", 
+                user.getPassword() != null && user.getPassword().length() > 20 
+                    ? user.getPassword().substring(0, 20) + "..." 
+                    : user.getPassword());
+            boolean matches = passwordEncoder.matches(request.getPassword(), user.getPassword());
+            logger.info("=== AuthService: Проверка пароля вручную: {}", matches);
+        }
+        
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
         );
@@ -61,6 +76,7 @@ public class AuthService {
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());
 
+        logger.info("=== AuthService: Аутентификация успешна для пользователя: {}", request.getUsername());
         return new AuthResponse(token, userDetails.getUsername(), roles);
     }
     
