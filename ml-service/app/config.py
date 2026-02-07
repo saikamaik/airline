@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+import os
 
 
 class Settings(BaseSettings):
@@ -7,19 +8,25 @@ class Settings(BaseSettings):
     
     # Основные настройки
     app_name: str = "TravelAgency ML Service"
-    debug: bool = True
+    debug: bool = os.getenv("DEBUG", "false").lower() == "true"
     
     # База данных (основной backend)
-    database_url: str = "postgresql://postgres:postgres@localhost:5432/jcourse"
+    # Pydantic автоматически читает DATABASE_URL из переменных окружения
+    database_url: str = os.getenv(
+        "DATABASE_URL", 
+        "postgresql://postgres:postgres@localhost:5432/jcourse"
+    )
     
-    # Backend API
-    backend_url: str = "http://localhost:8080"
+    # Backend API (не используется напрямую, но может быть полезен)
+    backend_url: str = os.getenv("BACKEND_URL", "http://localhost:8080")
     
     # ML модели
-    model_path: str = "./models"
+    model_path: str = os.getenv("MODEL_PATH", "./models")
     
     class Config:
         env_file = ".env"
+        # Pydantic автоматически читает переменные окружения
+        # DATABASE_URL → database_url, DEBUG → debug и т.д.
 
 
 @lru_cache()

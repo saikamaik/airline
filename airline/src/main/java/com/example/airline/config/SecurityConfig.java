@@ -81,7 +81,6 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints (доступны без авторизации)
                         .requestMatchers("/", "/health", "/actuator/health").permitAll()  // Health check для Railway
-                        .requestMatchers("/test-hash").permitAll()  // Временный endpoint для отладки паролей
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**").permitAll()
                         // Просмотр туров и рейсов - публичный
