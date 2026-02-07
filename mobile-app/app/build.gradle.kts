@@ -27,18 +27,11 @@ android {
 
     buildTypes {
         debug {
-            // Для разработки - локальный сервер
-            // Для эмулятора: http://10.0.2.2:8080/
-            // Для физического устройства в той же сети: http://192.168.1.42:8080/
-            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8080/\"")
+            buildConfigField("String", "BASE_URL", "\"https://airline-production-d302.up.railway.app/\"")
         }
         
         release {
-            // Для продакшна - замените на ваш реальный сервер
-            // Примеры:
-            // - С доменом: "https://api.yourdomain.com/"
-            // - С IP: "http://your-server-ip:8080/"
-            buildConfigField("String", "BASE_URL", "\"https://your-domain.com/\"")
+            buildConfigField("String", "BASE_URL", "\"https://airline-production-d302.up.railway.app/\"")
             
             isMinifyEnabled = false
             proguardFiles(

@@ -31,6 +31,8 @@ public class Client {
 
     private String phone;
 
+    // birthDate не используется, оставлено для совместимости, но не сохраняется в БД
+    @Transient
     private LocalDate birthDate;
 
     @Column(columnDefinition = "TEXT")
