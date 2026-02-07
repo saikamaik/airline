@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional, Dict
 from datetime import date
 from enum import Enum
@@ -112,6 +112,9 @@ class DemandForecastTableRow(BaseModel):
 
 class AnalyticsResponse(BaseModel):
     """Общий ответ аналитики"""
+    # Настройка Pydantic для разрешения использования model_ префикса
+    model_config = ConfigDict(protected_namespaces=('settings_',))
+    
     period: str
     statistics: RequestStatistics
     popular_destinations: List[PopularDestination]

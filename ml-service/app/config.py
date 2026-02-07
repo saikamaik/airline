@@ -1,10 +1,17 @@
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from functools import lru_cache
 import os
 
 
 class Settings(BaseSettings):
     """Настройки приложения"""
+    
+    # Настройка Pydantic для разрешения использования model_ префикса
+    model_config = ConfigDict(
+        protected_namespaces=('settings_',),  # Разрешаем model_ префикс
+        env_file=".env"
+    )
     
     # Основные настройки
     app_name: str = "TravelAgency ML Service"
@@ -22,11 +29,6 @@ class Settings(BaseSettings):
     
     # ML модели
     model_path: str = os.getenv("MODEL_PATH", "./models")
-    
-    class Config:
-        env_file = ".env"
-        # Pydantic автоматически читает переменные окружения
-        # DATABASE_URL → database_url, DEBUG → debug и т.д.
 
 
 @lru_cache()
