@@ -21,8 +21,21 @@ public class MlServiceClient {
     public MlServiceClient(
             @Value("${ml.service.url:http://localhost:8000}") String mlServiceUrl
     ) {
+        // Обработка URL: если не указан протокол, добавляем https://
+        String processedUrl = mlServiceUrl;
+        if (!processedUrl.startsWith("http://") && !processedUrl.startsWith("https://")) {
+            processedUrl = "https://" + processedUrl;
+        }
+        // Убираем trailing slash если есть
+        if (processedUrl.endsWith("/")) {
+            processedUrl = processedUrl.substring(0, processedUrl.length() - 1);
+        }
+        
+        org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(MlServiceClient.class);
+        logger.info("=== MlServiceClient: Initialized with baseURL: {}", processedUrl);
+        
         this.webClient = WebClient.builder()
-                .baseUrl(mlServiceUrl)
+                .baseUrl(processedUrl)
                 .build();
     }
 
