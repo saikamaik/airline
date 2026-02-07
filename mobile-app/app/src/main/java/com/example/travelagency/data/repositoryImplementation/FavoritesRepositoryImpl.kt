@@ -17,7 +17,7 @@ class FavoritesRepositoryImpl @Inject constructor(
 
     override fun getFavorites(page: Int, size: Int): Flow<FavoritesResponse> = flow {
         Log.d(TAG, "getFavorites() called: page=$page, size=$size")
-        emit(Response.Loading)
+        // НЕ emit(Response.Loading) - иначе .first() отменит Flow!
 
         try {
             val response = apiService.getFavorites(page = page, size = size)
@@ -33,6 +33,7 @@ class FavoritesRepositoryImpl @Inject constructor(
                 emit(Response.Failure(e = "Ошибка загрузки избранного: ${response.code()}"))
             }
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "Exception in getFavorites()", e)
             emit(Response.Failure(e = e.message ?: "Ошибка подключения"))
         }
@@ -40,7 +41,7 @@ class FavoritesRepositoryImpl @Inject constructor(
 
     override fun addToFavorites(tourId: Long): Flow<FavoriteResponse> = flow {
         Log.d(TAG, "addToFavorites() called: tourId=$tourId")
-        emit(Response.Loading)
+        // НЕ emit(Response.Loading) - иначе .first() отменит Flow!
 
         try {
             val request = AddToFavoritesRequest(tourId = tourId)
@@ -55,6 +56,7 @@ class FavoritesRepositoryImpl @Inject constructor(
                 emit(Response.Failure(e = "Ошибка добавления в избранное: ${response.code()}"))
             }
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "Exception in addToFavorites()", e)
             emit(Response.Failure(e = e.message ?: "Ошибка подключения"))
         }
@@ -62,7 +64,7 @@ class FavoritesRepositoryImpl @Inject constructor(
 
     override fun removeFromFavorites(tourId: Long): Flow<Response<Unit>> = flow {
         Log.d(TAG, "removeFromFavorites() called: tourId=$tourId")
-        emit(Response.Loading)
+        // НЕ emit(Response.Loading) - иначе .first() отменит Flow!
 
         try {
             val response = apiService.removeFromFavorites(tourId)
@@ -76,13 +78,14 @@ class FavoritesRepositoryImpl @Inject constructor(
                 emit(Response.Failure(e = "Ошибка удаления из избранного: ${response.code()}"))
             }
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "Exception in removeFromFavorites()", e)
             emit(Response.Failure(e = e.message ?: "Ошибка подключения"))
         }
     }
 
     override fun checkIsFavorite(tourId: Long): Flow<IsFavoriteResponse> = flow {
-        emit(Response.Loading)
+        // НЕ emit(Response.Loading) - иначе .first() отменит Flow!
 
         try {
             val response = apiService.checkIsFavorite(tourId)
@@ -94,13 +97,14 @@ class FavoritesRepositoryImpl @Inject constructor(
                 emit(Response.Failure(e = "Ошибка проверки избранного"))
             }
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "Exception in checkIsFavorite()", e)
             emit(Response.Failure(e = e.message ?: "Ошибка подключения"))
         }
     }
 
     override fun getFavoritesCount(): Flow<FavoritesCountResponse> = flow {
-        emit(Response.Loading)
+        // НЕ emit(Response.Loading) - иначе .first() отменит Flow!
 
         try {
             val response = apiService.getFavoritesCount()
@@ -112,6 +116,7 @@ class FavoritesRepositoryImpl @Inject constructor(
                 emit(Response.Failure(e = "Ошибка получения количества"))
             }
         } catch (e: Exception) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
             Log.e(TAG, "Exception in getFavoritesCount()", e)
             emit(Response.Failure(e = e.message ?: "Ошибка подключения"))
         }

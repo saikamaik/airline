@@ -35,7 +35,14 @@ public class TourService {
 
     @Transactional(readOnly = true)
     public Optional<Tour> findById(Long id) {
-        return tourRepository.findById(id);
+        Optional<Tour> tourOpt = tourRepository.findById(id);
+        // Инициализируем LAZY коллекцию flights внутри транзакции
+        tourOpt.ifPresent(tour -> {
+            if (tour.getFlights() != null) {
+                tour.getFlights().size(); // Триггер инициализации
+            }
+        });
+        return tourOpt;
     }
 
     @Transactional(readOnly = true)

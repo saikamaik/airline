@@ -1,6 +1,7 @@
 package com.example.travelagency
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,13 +17,19 @@ import dagger.hilt.android.AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.e("MainActivity", "========================================")
+        Log.e("MainActivity", "MAIN ACTIVITY CREATED!")
+        Log.e("MainActivity", "========================================")
+        
         setContent {
+            Log.e("MainActivity", "setContent called")
             TravelAgencyTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
+                    Log.e("MainActivity", "Navigation starting...")
                     Navigation(navController = navController)
                 }
             }
