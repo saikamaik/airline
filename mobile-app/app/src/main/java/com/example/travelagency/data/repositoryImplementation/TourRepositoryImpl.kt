@@ -21,18 +21,27 @@ class TourRepositoryImpl @Inject constructor(
 ) : TourRepository {
 
     override fun getAllTours(page: Int, size: Int): Flow<PaginatedToursResponse> = flow {
+        Log.d(TAG, "getAllTours() called: page=$page, size=$size")
         emit(Response.Loading)
 
         try {
+            Log.d(TAG, "Calling apiService.getTours()...")
             val response = apiService.getTours(page = page, size = size)
+            Log.d(TAG, "API response received: code=${response.code()}, isSuccessful=${response.isSuccessful}, body=${response.body() != null}")
+            
             if (response.isSuccessful && response.body() != null) {
-                emit(Response.Success(response.body()!!))
+                val body = response.body()!!
+                Log.d(TAG, "Tours loaded successfully: ${body.content.size} tours, total=${body.totalElements}, last=${body.last}")
+                emit(Response.Success(body))
             } else {
-                Log.w(TAG, "Failed to load tours: ${response.code()} - ${response.message()}")
-                emit(Response.Failure(e = "Ошибка загрузки туров"))
+                val errorBody = response.errorBody()?.string()
+                Log.w(TAG, "Failed to load tours: code=${response.code()}, message=${response.message()}, errorBody=$errorBody")
+                emit(Response.Failure(e = "Ошибка загрузки туров: ${response.code()}"))
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error loading tours", e)
+            Log.e(TAG, "Exception in getAllTours()", e)
+            Log.e(TAG, "Exception type: ${e::class.simpleName}, message: ${e.message}")
+            e.printStackTrace()
             emit(Response.Failure(e = e.message ?: "Ошибка подключения"))
         }
     }

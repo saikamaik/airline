@@ -44,6 +44,8 @@ import com.example.travelagency.navigation.Screen
 import com.example.travelagency.presentation.view.homeScreen.components.TourCard
 import com.example.travelagency.presentation.view.homeScreen.uiEvent.HomeUiEvent
 
+import android.util.Log
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -52,6 +54,22 @@ fun HomeScreen(
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
     val uiState = viewModel.uiState.collectAsState()
+    
+    // Логирование для диагностики
+    androidx.compose.runtime.LaunchedEffect(uiState.value.toursResponse) {
+        Log.d("HomeScreen", "toursResponse changed: ${uiState.value.toursResponse::class.simpleName}")
+        when (val response = uiState.value.toursResponse) {
+            is Response.Success -> {
+                Log.d("HomeScreen", "Tours loaded: ${uiState.value.tours.size} items")
+            }
+            is Response.Failure -> {
+                Log.e("HomeScreen", "Tours loading failed: ${response.e}")
+            }
+            is Response.Loading -> {
+                Log.d("HomeScreen", "Tours loading...")
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -194,4 +212,3 @@ fun HomeScreen(
             }
         }
     }
-}

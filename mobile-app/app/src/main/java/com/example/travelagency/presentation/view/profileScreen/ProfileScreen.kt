@@ -3,6 +3,7 @@ package com.example.travelagency.presentation.view.profileScreen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -68,6 +69,24 @@ fun ProfileScreen(
                         ProfileInfoRow("Имя пользователя", uiState.username)
                     }
                 }
+            }
+
+            // Кнопка "Избранное"
+            Button(
+                onClick = {
+                    navController.navigate(Screen.Favorites.route)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Favorite,
+                    contentDescription = "Избранное"
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Мои избранные туры", fontSize = 16.sp)
             }
 
             // Кнопка выхода

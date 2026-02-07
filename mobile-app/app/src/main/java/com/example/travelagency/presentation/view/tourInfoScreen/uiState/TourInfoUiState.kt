@@ -6,5 +6,7 @@ import com.example.travelagency.domain.TourResponse
 
 data class TourInfoUiState(
     val tourResponse: TourResponse = Response.Loading,
-    val flightsResponse: FlightsResponse = Response.Loading
+    val flightsResponse: FlightsResponse = Response.Loading,
+    val isFavorite: Boolean = false,
+    val isCheckingFavorite: Boolean = true
 )

@@ -42,4 +42,24 @@ interface ApiService {
         @Query("size") size: Int = 20
     ): Response<RequestListResponse>
 
+    // Favorites
+    @GET("favorites")
+    suspend fun getFavorites(
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 20
+    ): Response<FavoriteTourListResponse>
+
+    @POST("favorites")
+    suspend fun addToFavorites(@Body request: AddToFavoritesRequest): Response<FavoriteTourModel>
+
+    @DELETE("favorites/{tourId}")
+    suspend fun removeFromFavorites(@Path("tourId") tourId: Long): Response<Unit>
+
+    @GET("favorites/check/{tourId}")
+    suspend fun checkIsFavorite(@Path("tourId") tourId: Long): Response<IsFavoriteResponse>
+
+    @GET("favorites/count")
+    suspend fun getFavoritesCount(): Response<FavoritesCountResponse>
+
 }
+

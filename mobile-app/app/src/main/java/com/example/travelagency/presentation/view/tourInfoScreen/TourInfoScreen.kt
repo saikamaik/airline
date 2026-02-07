@@ -16,6 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Flight
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
@@ -89,11 +91,15 @@ fun TourInfoScreen(
                 TourInfoContent(
                     tour = tourResponse.data,
                     flightsResponse = uiState.value.flightsResponse,
+                    isFavorite = uiState.value.isFavorite,
                     modifier = Modifier.padding(padding),
                     onBookClick = {
                         navHostController.navigate(
                             Screen.Request.route + "/${tourResponse.data.id}"
                         )
+                    },
+                    onFavoriteClick = {
+                        viewModel.postUiEvent(com.example.travelagency.presentation.view.tourInfoScreen.uiEvent.TourInfoUiEvent.ToggleFavorite)
                     }
                 )
             }
@@ -117,8 +123,10 @@ fun TourInfoScreen(
 private fun TourInfoContent(
     tour: TourModel,
     flightsResponse: Response<List<FlightModel>>,
+    isFavorite: Boolean,
     modifier: Modifier = Modifier,
-    onBookClick: () -> Unit
+    onBookClick: () -> Unit,
+    onFavoriteClick: () -> Unit
 ) {
     Column(
         modifier = modifier
@@ -137,11 +145,28 @@ private fun TourInfoContent(
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Text(
-                text = tour.name,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = tour.name,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                // Кнопка избранного
+                IconButton(onClick = onFavoriteClick) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = if (isFavorite) "Удалить из избранного" else "Добавить в избранное",
+                        tint = if (isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 

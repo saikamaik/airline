@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.travelagency.presentation.view.authScreens.signInScreen.SignInScreen
 import com.example.travelagency.presentation.view.authScreens.signUpScreen.SignUpScreen
+import com.example.travelagency.presentation.view.favoritesScreen.FavoritesScreen
 import com.example.travelagency.presentation.view.launchScreen.LaunchScreen
 import com.example.travelagency.presentation.view.mainScreen.MainScreen
 import com.example.travelagency.presentation.view.requestScreen.RequestScreen
@@ -53,6 +54,10 @@ fun Navigation(navController: NavHostController) {
             })
         ) {
             RequestScreen(navController)
+        }
+
+        composable(Screen.Favorites.route) {
+            FavoritesScreen(navController)
         }
 
     }

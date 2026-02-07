@@ -37,11 +37,19 @@ object AppModule {
             val prefs = AuthRepositoryImpl.getEncryptedPrefs(context)
             val token = prefs.getString("token", null)
 
-            val request = chain.request().newBuilder()
+            val originalRequest = chain.request()
+            android.util.Log.d("AuthInterceptor", "Request: ${originalRequest.method} ${originalRequest.url}")
+            android.util.Log.d("AuthInterceptor", "Token present: ${token != null}")
+
+            val request = originalRequest.newBuilder()
             if (token != null) {
                 request.addHeader("Authorization", "Bearer $token")
+                android.util.Log.d("AuthInterceptor", "Added Authorization header")
             }
-            chain.proceed(request.build())
+            
+            val response = chain.proceed(request.build())
+            android.util.Log.d("AuthInterceptor", "Response: ${response.code} ${response.message}")
+            response
         }
     }
 
@@ -49,11 +57,8 @@ object AppModule {
     @Singleton
     fun provideOkHttpClient(authInterceptor: Interceptor): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
-            level = if (BuildConfig.DEBUG) {
-                HttpLoggingInterceptor.Level.BODY
-            } else {
-                HttpLoggingInterceptor.Level.NONE
-            }
+            // Всегда включаем логирование для диагностики
+            level = HttpLoggingInterceptor.Level.BODY
         }
 
         return OkHttpClient.Builder()
@@ -67,6 +72,7 @@ object AppModule {
     @Provides
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
+        android.util.Log.d("AppModule", "Initializing Retrofit with BASE_URL: $BASE_URL")
         return Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(okHttpClient)
@@ -91,5 +97,10 @@ object AppModule {
     @Singleton
     fun provideTourRepository(apiService: ApiService): TourRepository =
         TourRepositoryImpl(apiService)
+
+    @Provides
+    @Singleton
+    fun provideFavoritesRepository(apiService: ApiService): com.example.travelagency.domain.FavoritesRepository =
+        com.example.travelagency.data.repositoryImplementation.FavoritesRepositoryImpl(apiService)
 
 }

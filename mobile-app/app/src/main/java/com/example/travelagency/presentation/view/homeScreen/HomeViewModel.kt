@@ -1,5 +1,6 @@
 package com.example.travelagency.presentation.view.homeScreen
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.travelagency.data.model.Response
@@ -13,6 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+private const val TAG = "HomeViewModel"
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -32,14 +35,17 @@ class HomeViewModel @Inject constructor(
     }
 
     init {
+        Log.d(TAG, "HomeViewModel initialized, loading tours...")
         loadTours()
     }
 
     private fun onSearchQueryChange(query: String) {
+        Log.d(TAG, "Search query changed: $query")
         _uiState.value = _uiState.value.copy(searchQuery = query)
     }
 
     private fun loadTours() = viewModelScope.launch {
+        Log.d(TAG, "loadTours() called, page: 0, size: ${_uiState.value.pageSize}")
         _uiState.value = _uiState.value.copy(
             currentPage = 0,
             hasMore = true,
@@ -47,27 +53,39 @@ class HomeViewModel @Inject constructor(
             toursResponse = Response.Loading as ToursResponse
         )
         
-        val response = tourRepository.getAllTours(page = 0, size = _uiState.value.pageSize).first()
-        when (response) {
-            is Response.Loading -> {
-                _uiState.value = _uiState.value.copy(
-                    toursResponse = Response.Loading as ToursResponse
-                )
+        try {
+            Log.d(TAG, "Calling tourRepository.getAllTours()...")
+            val response = tourRepository.getAllTours(page = 0, size = _uiState.value.pageSize).first()
+            Log.d(TAG, "Received response: ${response::class.simpleName}")
+            when (response) {
+                is Response.Loading -> {
+                    Log.d(TAG, "Response is Loading")
+                    _uiState.value = _uiState.value.copy(
+                        toursResponse = Response.Loading as ToursResponse
+                    )
+                }
+                is Response.Success -> {
+                    val tourListResponse = response.data
+                    Log.d(TAG, "Response is Success: ${tourListResponse.content.size} tours, hasMore: ${!tourListResponse.last}")
+                    _uiState.value = _uiState.value.copy(
+                        tours = tourListResponse.content,
+                        currentPage = 0,
+                        hasMore = !tourListResponse.last,
+                        toursResponse = Response.Success(tourListResponse.content) as ToursResponse
+                    )
+                }
+                is Response.Failure -> {
+                    Log.e(TAG, "Response is Failure: ${response.e}")
+                    _uiState.value = _uiState.value.copy(
+                        toursResponse = Response.Failure(response.e) as ToursResponse
+                    )
+                }
             }
-            is Response.Success -> {
-                val tourListResponse = response.data
-                _uiState.value = _uiState.value.copy(
-                    tours = tourListResponse.content,
-                    currentPage = 0,
-                    hasMore = !tourListResponse.last,
-                    toursResponse = Response.Success(tourListResponse.content) as ToursResponse
-                )
-            }
-            is Response.Failure -> {
-                _uiState.value = _uiState.value.copy(
-                    toursResponse = Response.Failure(response.e) as ToursResponse
-                )
-            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception in loadTours()", e)
+            _uiState.value = _uiState.value.copy(
+                toursResponse = Response.Failure(e.message ?: "Неизвестная ошибка") as ToursResponse
+            )
         }
     }
 

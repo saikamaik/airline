@@ -88,6 +88,9 @@ public class SecurityConfig {
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/flights/**").permitAll()
                         // Создание заявки - только для авторизованных пользователей
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/tours/*/request").authenticated()
+                        // Избранные туры - только для авторизованных клиентов
+                        .requestMatchers("/favorites/**").authenticated()
+                        .requestMatchers("/client/requests").authenticated()
                         // Admin endpoints
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         // Employee endpoints
