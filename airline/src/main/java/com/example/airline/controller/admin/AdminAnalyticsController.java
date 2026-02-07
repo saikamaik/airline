@@ -172,10 +172,16 @@ public class AdminAnalyticsController {
         try {
             JsonNode result = mlServiceClient.getModelMetrics()
                     .block(Duration.ofSeconds(30));
-            if (result != null) {
-                return ResponseEntity.ok(result);
+            if (result == null || result.isEmpty()) {
+                return ResponseEntity.ok(com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.arrayNode());
             }
-            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+            // ML сервис возвращает объект {metrics: [], hasMore: bool, total: number}
+            // Извлекаем поле "metrics" для фронтенда
+            if (result.has("metrics") && result.get("metrics").isArray()) {
+                return ResponseEntity.ok(result.get("metrics"));
+            }
+            // Если формат неожиданный, возвращаем как есть (для обратной совместимости)
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
             logger.error("Error getting model metrics", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

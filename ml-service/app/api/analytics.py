@@ -330,19 +330,31 @@ async def get_model_metrics(
     try:
         # Получаем метрики для всех направлений
         requests = analytics_service.data_service.get_requests(180)
+        logger.info(f"get_model_metrics: Получено {len(requests)} заявок за последние 180 дней")
+        
         if requests.empty:
-            return []
+            logger.warn("get_model_metrics: Нет заявок за последние 180 дней")
+            return {
+                "metrics": [],
+                "hasMore": False,
+                "total": 0
+            }
         
         destinations = requests['destination_city'].value_counts()
+        logger.info(f"get_model_metrics: Найдено {len(destinations)} направлений")
+        
         destinations_to_analyze = destinations[destinations >= 4].index.tolist()[:limit]  # Ограничиваем по limit
+        logger.info(f"get_model_metrics: Направлений с >=4 заявками: {len(destinations_to_analyze)}")
         
         metrics_list = []
         for dest in destinations_to_analyze:
             if pd.isna(dest):
+                logger.debug(f"get_model_metrics: Пропускаем направление с NaN: {dest}")
                 continue
             
             dest_requests = requests[requests['destination_city'] == dest]
             if len(dest_requests) < 4:
+                logger.debug(f"get_model_metrics: Направление {dest} имеет только {len(dest_requests)} заявок, пропускаем")
                 continue
             
             # Получаем метрики через обучение/загрузку модели
@@ -350,6 +362,7 @@ async def get_model_metrics(
             dest_requests_copy = dest_requests.copy()
             dest_requests_copy['created_at'] = pd.to_datetime(dest_requests_copy['created_at'])
             dest_requests_copy['week'] = dest_requests_copy['created_at'].dt.isocalendar().week
+            dest_requests_copy['year'] = dest_requests_copy['created_at'].dt.isocalendar().year
             
             def get_season(month):
                 if month in [12, 1, 2]:
@@ -364,26 +377,37 @@ async def get_model_metrics(
             dest_requests_copy['month'] = dest_requests_copy['created_at'].dt.month
             dest_requests_copy['season'] = dest_requests_copy['month'].apply(get_season)
             
-            weekly_data = dest_requests_copy.groupby(['week', 'season']).size().reset_index(name='count')
+            # Группируем по неделе и сезону, учитывая год для уникальности
+            weekly_data = dest_requests_copy.groupby(['year', 'week', 'season']).size().reset_index(name='count')
+            logger.debug(f"get_model_metrics: Направление {dest}: {len(weekly_data)} уникальных недель")
+            
             if len(weekly_data) < 3:
+                logger.debug(f"get_model_metrics: Направление {dest} имеет только {len(weekly_data)} недель данных, нужно минимум 3")
                 continue
             
             X = weekly_data[['week', 'season']].values
             y = weekly_data['count'].values
             
-            _, metrics = analytics_service._get_or_train_ensemble_model(dest, X, y)
-            
-            from app.schemas.analytics import ModelMetrics
-            metrics_list.append(
-                ModelMetrics(
-                    destination=dest,
-                    **metrics
+            try:
+                _, metrics = analytics_service._get_or_train_ensemble_model(dest, X, y)
+                
+                from app.schemas.analytics import ModelMetrics
+                metrics_list.append(
+                    ModelMetrics(
+                        destination=dest,
+                        **metrics
+                    )
                 )
-            )
+                logger.info(f"get_model_metrics: Успешно получены метрики для {dest}")
+            except Exception as e:
+                logger.error(f"get_model_metrics: Ошибка при обучении модели для {dest}: {e}", exc_info=True)
+                continue
         
         # Проверяем есть ли еще направления
         all_destinations = destinations[destinations >= 4].index.tolist()
         has_more = len(all_destinations) > limit
+        
+        logger.info(f"get_model_metrics: Возвращаем {len(metrics_list)} метрик из {len(all_destinations)} направлений")
         
         return {
             "metrics": metrics_list,
