@@ -49,6 +49,7 @@ fun MyRequestsScreen(
 ) {
     val viewModel: MyRequestsViewModel = hiltViewModel()
     val uiState = viewModel.uiState.collectAsState()
+    val isAuthorized = viewModel.isAuthorized.collectAsState()
 
     Column(
         modifier = Modifier
@@ -62,6 +63,21 @@ fun MyRequestsScreen(
                 titleContentColor = MaterialTheme.colorScheme.onPrimary
             )
         )
+        
+        // Проверка авторизации
+        if (!isAuthorized.value) {
+            com.example.travelagency.presentation.view.common.UnauthorizedScreen(
+                title = "Войдите в аккаунт",
+                message = "Для просмотра заявок необходимо войти в систему",
+                onSignInClick = {
+                    navController.navigate(com.example.travelagency.navigation.Screen.SignIn.route)
+                },
+                onSignUpClick = {
+                    navController.navigate(com.example.travelagency.navigation.Screen.SignUp.route)
+                }
+            )
+            return@Column
+        }
         when (val response = uiState.value.requestsResponse) {
             is Response.Loading -> {
                 Box(

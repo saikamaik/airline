@@ -17,8 +17,17 @@ class ProfileViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState
 
+    private val _isAuthorized = MutableStateFlow(false)
+    val isAuthorized: StateFlow<Boolean> = _isAuthorized
+
     init {
+        checkAuthorization()
         loadUserInfo()
+    }
+
+    private fun checkAuthorization() {
+        val user = authRepository.getCurrentUser()
+        _isAuthorized.value = user != null
     }
 
     private fun loadUserInfo() {

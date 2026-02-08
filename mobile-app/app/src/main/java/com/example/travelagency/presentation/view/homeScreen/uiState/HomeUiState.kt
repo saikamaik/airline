@@ -12,5 +12,9 @@ data class HomeUiState(
     val currentPage: Int = 0,
     val hasMore: Boolean = true,
     val isLoadingMore: Boolean = false,
-    val pageSize: Int = 20
+    val pageSize: Int = 20,
+    // Фильтры
+    val minPrice: Double? = null,
+    val maxPrice: Double? = null,
+    val showFilters: Boolean = false
 )

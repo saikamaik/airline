@@ -16,6 +16,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -24,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -88,11 +93,40 @@ fun HomeScreen(
                     fontWeight = FontWeight.Bold
                 )
             },
+            actions = {
+                IconButton(onClick = { viewModel.postUiEvent(HomeUiEvent.ToggleFilters) }) {
+                    Icon(
+                        imageVector = Icons.Default.FilterList,
+                        contentDescription = "Фильтры",
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+            },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.primary,
                 titleContentColor = MaterialTheme.colorScheme.onPrimary
             )
         )
+        
+        // Диалог фильтров
+        if (uiState.value.showFilters) {
+            FiltersDialog(
+                minPrice = uiState.value.minPrice,
+                maxPrice = uiState.value.maxPrice,
+                onMinPriceChange = { viewModel.postUiEvent(HomeUiEvent.OnMinPriceChange(it)) },
+                onMaxPriceChange = { viewModel.postUiEvent(HomeUiEvent.OnMaxPriceChange(it)) },
+                onApply = { 
+                    viewModel.postUiEvent(HomeUiEvent.ApplyFilters)
+                    viewModel.postUiEvent(HomeUiEvent.ToggleFilters)
+                },
+                onClear = {
+                    viewModel.postUiEvent(HomeUiEvent.ClearFilters)
+                    viewModel.postUiEvent(HomeUiEvent.ToggleFilters)
+                },
+                onDismiss = { viewModel.postUiEvent(HomeUiEvent.ToggleFilters) }
+            )
+        }
+        
             // Search bar
             OutlinedTextField(
                 value = uiState.value.searchQuery,
@@ -100,10 +134,17 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                placeholder = { Text("Поиск туров...") },
+                placeholder = { Text("Поиск туров по направлению...") },
                 leadingIcon = {
                     Icon(Icons.Default.Search, contentDescription = null)
                 },
+                trailingIcon = if (uiState.value.searchQuery.isNotEmpty()) {
+                    {
+                        IconButton(onClick = { viewModel.postUiEvent(HomeUiEvent.OnSearchQueryChange("")) }) {
+                            Icon(Icons.Default.Close, contentDescription = "Очистить")
+                        }
+                    }
+                } else null,
                 singleLine = true
             )
 
@@ -258,3 +299,78 @@ fun HomeScreen(
             }
         }
     }
+
+@Composable
+private fun FiltersDialog(
+    minPrice: Double?,
+    maxPrice: Double?,
+    onMinPriceChange: (Double?) -> Unit,
+    onMaxPriceChange: (Double?) -> Unit,
+    onApply: () -> Unit,
+    onClear: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Фильтры поиска", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Минимальная цена
+                OutlinedTextField(
+                    value = minPrice?.toString() ?: "",
+                    onValueChange = { value ->
+                        onMinPriceChange(value.toDoubleOrNull())
+                    },
+                    label = { Text("Минимальная цена (₽)") },
+                    placeholder = { Text("Например, 10000") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                
+                // Максимальная цена
+                OutlinedTextField(
+                    value = maxPrice?.toString() ?: "",
+                    onValueChange = { value ->
+                        onMaxPriceChange(value.toDoubleOrNull())
+                    },
+                    label = { Text("Максимальная цена (₽)") },
+                    placeholder = { Text("Например, 100000") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                
+                // Информация о фильтрах
+                if (minPrice != null || maxPrice != null) {
+                    Text(
+                        text = buildString {
+                            append("Цена: ")
+                            if (minPrice != null) append("от ${minPrice.toInt()}₽")
+                            if (minPrice != null && maxPrice != null) append(" ")
+                            if (maxPrice != null) append("до ${maxPrice.toInt()}₽")
+                        },
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onApply) {
+                Text("Применить")
+            }
+        },
+        dismissButton = {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onClear) {
+                    Text("Сбросить")
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("Отмена")
+                }
+            }
+        }
+    )
+}
