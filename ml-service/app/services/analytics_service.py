@@ -205,44 +205,65 @@ class AnalyticsService:
             # Создаем временной индекс (порядковый номер месяца)
             monthly_stats['time_index'] = range(len(monthly_stats))
             
-            # Обучаем модели для прогноза количества заявок и средней цены
-            X = monthly_stats[['time_index', 'month_num']].values
-            y_demand = monthly_stats['request_count'].values
-            y_price = monthly_stats['avg_price'].fillna(0).values
+            # Вычисляем тренд (рост/спад) по последним месяцам
+            # Берем последние 3 месяца для определения тренда
+            recent_months = min(3, len(monthly_stats))
+            recent_demand = monthly_stats['request_count'].tail(recent_months).values
+            if len(recent_demand) >= 2:
+                # Линейный тренд: положительный = рост, отрицательный = спад
+                trend_slope = (recent_demand[-1] - recent_demand[0]) / len(recent_demand)
+            else:
+                trend_slope = 0
             
-            # Используем линейную регрессию с учетом сезонности
-            from sklearn.preprocessing import PolynomialFeatures
-            from sklearn.pipeline import make_pipeline
+            # Вычисляем средние значения по месяцам года для сезонности
+            monthly_averages = {}
+            for month in range(1, 13):
+                month_data = monthly_stats[monthly_stats['month_num'] == month]
+                if not month_data.empty:
+                    monthly_averages[month] = {
+                        'demand': month_data['request_count'].mean(),
+                        'price': month_data['avg_price'].mean()
+                    }
             
-            # Полиномиальные признаки для лучшего улавливания сезонных паттернов
-            demand_model = make_pipeline(
-                PolynomialFeatures(degree=2),
-                LinearRegression()
-            )
-            price_model = make_pipeline(
-                PolynomialFeatures(degree=2),
-                LinearRegression()
-            )
+            # Общие средние значения
+            overall_avg_demand = monthly_stats['request_count'].mean()
+            overall_avg_price = monthly_stats['avg_price'].mean()
             
-            demand_model.fit(X, y_demand)
-            price_model.fit(X, y_price)
+            # Последние значения (базовая линия)
+            last_demand = monthly_stats['request_count'].iloc[-1]
+            last_price = monthly_stats['avg_price'].iloc[-1]
             
-            logger.info("Trained seasonal forecast models")
+            logger.info(f"Trend slope: {trend_slope:.2f}, Last demand: {last_demand}, Avg demand: {overall_avg_demand:.2f}")
             
             # Генерируем прогнозы на следующие месяцы
             forecasts = []
             current_date = datetime.now()
-            last_time_index = monthly_stats['time_index'].iloc[-1]
             
             for i in range(1, forecast_months + 1):
                 forecast_date = current_date + timedelta(days=30 * i)
                 month_num = forecast_date.month
-                time_index = last_time_index + i
                 
-                # Прогнозируем
-                X_future = np.array([[time_index, month_num]])
-                predicted_demand = max(0, int(demand_model.predict(X_future)[0]))
-                predicted_price = max(0, float(price_model.predict(X_future)[0]))
+                # Прогноз на основе сезонности + тренда
+                if month_num in monthly_averages:
+                    # Используем сезонный паттерн
+                    seasonal_demand = monthly_averages[month_num]['demand']
+                    seasonal_price = monthly_averages[month_num]['price']
+                    
+                    # Добавляем тренд: продолжаем тенденцию последних месяцев
+                    trend_adjustment = trend_slope * i * 0.8  # Затухающий тренд
+                    predicted_demand = seasonal_demand + trend_adjustment
+                    
+                    # Цена следует за спросом, но более стабильно
+                    price_trend = trend_slope * 50 * i  # Цена меняется медленнее
+                    predicted_price = seasonal_price + price_trend
+                else:
+                    # Fallback: используем общие средние + тренд
+                    predicted_demand = overall_avg_demand + (trend_slope * i * 0.8)
+                    predicted_price = overall_avg_price + (trend_slope * 50 * i)
+                
+                # Обеспечиваем разумные границы
+                predicted_demand = max(1, int(predicted_demand))
+                predicted_price = max(10000, float(predicted_price))
                 
                 # Получаем топ направления на основе исторических данных для этого месяца
                 same_month_data = monthly_stats[monthly_stats['month_num'] == month_num]
