@@ -51,6 +51,11 @@ fun MyRequestsScreen(
     val uiState = viewModel.uiState.collectAsState()
     val isAuthorized = viewModel.isAuthorized.collectAsState()
 
+    // Проверяем авторизацию и загружаем заявки при входе на экран
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        viewModel.checkAuthorizationAndLoad()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()

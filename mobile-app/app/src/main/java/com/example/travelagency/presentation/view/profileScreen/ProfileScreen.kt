@@ -38,6 +38,11 @@ fun ProfileScreen(
     val isDarkTheme by themePreferences.isDarkTheme.collectAsState(initial = false)
     val coroutineScope = rememberCoroutineScope()
 
+    // Проверяем авторизацию и загружаем данные при входе на экран
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        viewModel.checkAuthorizationAndLoadInfo()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()

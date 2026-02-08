@@ -21,6 +21,10 @@ class ProfileViewModel @Inject constructor(
     val isAuthorized: StateFlow<Boolean> = _isAuthorized
 
     init {
+        checkAuthorizationAndLoadInfo()
+    }
+
+    fun checkAuthorizationAndLoadInfo() {
         checkAuthorization()
         loadUserInfo()
     }
