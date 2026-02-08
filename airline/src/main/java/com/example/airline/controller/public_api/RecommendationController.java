@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Контроллер рекомендаций для мобильного приложения
@@ -22,7 +23,7 @@ public class RecommendationController {
     }
 
     /**
-     * Получить персонализированные рекомендации
+     * Получить персонализированные рекомендации (GET)
      */
     @GetMapping
     public Mono<ResponseEntity<JsonNode>> getRecommendations(
@@ -33,6 +34,37 @@ public class RecommendationController {
             @RequestParam(required = false) Integer duration,
             @RequestParam(defaultValue = "5") int limit
     ) {
+        return mlServiceClient.getRecommendations(
+                userId, destinations, minPrice, maxPrice, duration, limit
+        )
+                .map(ResponseEntity::ok)
+                .defaultIfEmpty(ResponseEntity.noContent().build());
+    }
+
+    /**
+     * Получить персонализированные рекомендации (POST - для мобильного приложения)
+     */
+    @PostMapping
+    public Mono<ResponseEntity<JsonNode>> getRecommendationsPost(@RequestBody Map<String, Object> request) {
+        Long userId = request.get("user_id") != null ? 
+            ((Number) request.get("user_id")).longValue() : null;
+        
+        @SuppressWarnings("unchecked")
+        List<String> destinations = request.get("preferred_destinations") != null ?
+            (List<String>) request.get("preferred_destinations") : null;
+        
+        Double minPrice = request.get("min_price") != null ?
+            ((Number) request.get("min_price")).doubleValue() : null;
+        
+        Double maxPrice = request.get("max_price") != null ?
+            ((Number) request.get("max_price")).doubleValue() : null;
+        
+        Integer duration = request.get("preferred_duration") != null ?
+            ((Number) request.get("preferred_duration")).intValue() : null;
+        
+        int limit = request.get("limit") != null ?
+            ((Number) request.get("limit")).intValue() : 5;
+        
         return mlServiceClient.getRecommendations(
                 userId, destinations, minPrice, maxPrice, duration, limit
         )

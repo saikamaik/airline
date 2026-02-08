@@ -61,8 +61,8 @@ interface ApiService {
     @GET("favorites/count")
     suspend fun getFavoritesCount(): Response<FavoritesCountResponse>
 
-    // Recommendations (ML Service)
-    @POST("ml/recommendations/")
+    // Recommendations (ML Service via Spring proxy)
+    @POST("recommendations")
     suspend fun getRecommendations(
         @Body request: RecommendationRequest
     ): Response<RecommendationResponse>
