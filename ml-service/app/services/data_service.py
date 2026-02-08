@@ -180,14 +180,26 @@ class DataService:
                     DATE_TRUNC('month', cr.created_at) as month,
                     COUNT(cr.id) as request_count,
                     AVG(t.price) as avg_price,
-                    array_agg(DISTINCT t.destination_city) as destinations
+                    COALESCE(
+                        string_agg(DISTINCT t.destination_city, ','),
+                        ''
+                    ) as destinations
                 FROM bookings.client_requests cr
                 JOIN bookings.tours t ON cr.tour_id = t.id
                 WHERE cr.created_at >= NOW() - make_interval(months => :months)
+                    AND t.destination_city IS NOT NULL
                 GROUP BY DATE_TRUNC('month', cr.created_at)
                 ORDER BY month
             """)
-            return pd.read_sql(query, self.engine, params={"months": months})
+            df = pd.read_sql(query, self.engine, params={"months": months})
+            
+            # Преобразуем строку с направлениями в список
+            if not df.empty and 'destinations' in df.columns:
+                df['destinations'] = df['destinations'].apply(
+                    lambda x: [d.strip() for d in str(x).split(',') if d.strip()] if x else []
+                )
+            
+            return df
         except OperationalError as e:
             logger.error(f"Database connection error in get_monthly_stats: {e}")
             raise DatabaseError("Unable to connect to database") from e

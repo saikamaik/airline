@@ -178,90 +178,105 @@ class AnalyticsService:
         Returns:
             Список прогнозов по месяцам с предсказанным спросом и ценами
         """
-        logger.info(f"Forecasting seasonal trends for {forecast_months} months ahead")
-        
-        # Получаем исторические данные за последние 24 месяца для учета сезонности
-        monthly_stats = self.data_service.get_monthly_stats(24)
-        
-        if monthly_stats.empty or len(monthly_stats) < 3:
-            logger.warning("Insufficient historical data for seasonal forecast")
-            return []
-        
-        # Подготавливаем данные для модели
-        monthly_stats = monthly_stats.sort_values('month')
-        
-        # Создаем признаки: номер месяца в году (1-12) для учета сезонности
-        monthly_stats['month_num'] = monthly_stats['month'].apply(
-            lambda x: x.month if hasattr(x, 'month') else 1
-        )
-        
-        # Создаем временной индекс (порядковый номер месяца)
-        monthly_stats['time_index'] = range(len(monthly_stats))
-        
-        # Обучаем модели для прогноза количества заявок и средней цены
-        X = monthly_stats[['time_index', 'month_num']].values
-        y_demand = monthly_stats['request_count'].values
-        y_price = monthly_stats['avg_price'].fillna(0).values
-        
-        # Используем линейную регрессию с учетом сезонности
-        from sklearn.preprocessing import PolynomialFeatures
-        from sklearn.pipeline import make_pipeline
-        
-        # Полиномиальные признаки для лучшего улавливания сезонных паттернов
-        demand_model = make_pipeline(
-            PolynomialFeatures(degree=2),
-            LinearRegression()
-        )
-        price_model = make_pipeline(
-            PolynomialFeatures(degree=2),
-            LinearRegression()
-        )
-        
-        demand_model.fit(X, y_demand)
-        price_model.fit(X, y_price)
-        
-        logger.info("Trained seasonal forecast models")
-        
-        # Генерируем прогнозы на следующие месяцы
-        forecasts = []
-        current_date = datetime.now()
-        last_time_index = monthly_stats['time_index'].iloc[-1]
-        
-        for i in range(1, forecast_months + 1):
-            forecast_date = current_date + timedelta(days=30 * i)
-            month_num = forecast_date.month
-            time_index = last_time_index + i
+        try:
+            logger.info(f"Forecasting seasonal trends for {forecast_months} months ahead")
             
-            # Прогнозируем
-            X_future = np.array([[time_index, month_num]])
-            predicted_demand = max(0, int(demand_model.predict(X_future)[0]))
-            predicted_price = max(0, float(price_model.predict(X_future)[0]))
+            # Получаем исторические данные за последние 24 месяца для учета сезонности
+            monthly_stats = self.data_service.get_monthly_stats(24)
             
-            # Получаем топ направления на основе исторических данных для этого месяца
-            same_month_data = monthly_stats[monthly_stats['month_num'] == month_num]
+            logger.info(f"Retrieved {len(monthly_stats)} months of historical data")
             
-            top_destinations = []
-            if not same_month_data.empty:
-                # Берем последние данные для этого месяца
-                destinations = same_month_data.iloc[-1].get('destinations', [])
-                if isinstance(destinations, str):
-                    top_destinations = [d.strip() for d in destinations.strip('{}').split(',')]
-                elif isinstance(destinations, list):
-                    top_destinations = destinations
+            if monthly_stats.empty or len(monthly_stats) < 3:
+                logger.warning("Insufficient historical data for seasonal forecast")
+                return []
             
-            forecasts.append(
-                SeasonalTrend(
-                    month=month_num,
-                    month_name=f"{self.MONTH_NAMES.get(month_num, str(month_num))} (прогноз)",
-                    request_count=predicted_demand,
-                    avg_price=round(predicted_price, 2),
-                    top_destinations=top_destinations,
-                    is_forecast=True  # Маркер что это прогноз
-                )
+            # Подготавливаем данные для модели
+            monthly_stats = monthly_stats.sort_values('month')
+        except Exception as e:
+            logger.error(f"Error loading historical data for seasonal forecast: {e}", exc_info=True)
+            raise
+        
+        try:
+            # Создаем признаки: номер месяца в году (1-12) для учета сезонности
+            monthly_stats['month_num'] = monthly_stats['month'].apply(
+                lambda x: x.month if hasattr(x, 'month') else 1
             )
-        
-        logger.info(f"Generated {len(forecasts)} seasonal forecasts")
-        return forecasts
+            
+            # Создаем временной индекс (порядковый номер месяца)
+            monthly_stats['time_index'] = range(len(monthly_stats))
+            
+            # Обучаем модели для прогноза количества заявок и средней цены
+            X = monthly_stats[['time_index', 'month_num']].values
+            y_demand = monthly_stats['request_count'].values
+            y_price = monthly_stats['avg_price'].fillna(0).values
+            
+            # Используем линейную регрессию с учетом сезонности
+            from sklearn.preprocessing import PolynomialFeatures
+            from sklearn.pipeline import make_pipeline
+            
+            # Полиномиальные признаки для лучшего улавливания сезонных паттернов
+            demand_model = make_pipeline(
+                PolynomialFeatures(degree=2),
+                LinearRegression()
+            )
+            price_model = make_pipeline(
+                PolynomialFeatures(degree=2),
+                LinearRegression()
+            )
+            
+            demand_model.fit(X, y_demand)
+            price_model.fit(X, y_price)
+            
+            logger.info("Trained seasonal forecast models")
+            
+            # Генерируем прогнозы на следующие месяцы
+            forecasts = []
+            current_date = datetime.now()
+            last_time_index = monthly_stats['time_index'].iloc[-1]
+            
+            for i in range(1, forecast_months + 1):
+                forecast_date = current_date + timedelta(days=30 * i)
+                month_num = forecast_date.month
+                time_index = last_time_index + i
+                
+                # Прогнозируем
+                X_future = np.array([[time_index, month_num]])
+                predicted_demand = max(0, int(demand_model.predict(X_future)[0]))
+                predicted_price = max(0, float(price_model.predict(X_future)[0]))
+                
+                # Получаем топ направления на основе исторических данных для этого месяца
+                same_month_data = monthly_stats[monthly_stats['month_num'] == month_num]
+                
+                top_destinations = []
+                if not same_month_data.empty and 'destinations' in same_month_data.columns:
+                    # Берем последние данные для этого месяца
+                    try:
+                        destinations = same_month_data.iloc[-1]['destinations']
+                        if isinstance(destinations, list):
+                            top_destinations = destinations[:3]  # Берем топ-3 направления
+                        elif isinstance(destinations, str):
+                            # На случай если преобразование не сработало
+                            top_destinations = [d.strip() for d in destinations.split(',') if d.strip()][:3]
+                    except Exception as e:
+                        logger.warning(f"Failed to extract destinations for month {month_num}: {e}")
+                        top_destinations = []
+                
+                forecasts.append(
+                    SeasonalTrend(
+                        month=month_num,
+                        month_name=f"{self.MONTH_NAMES.get(month_num, str(month_num))} (прогноз)",
+                        request_count=predicted_demand,
+                        avg_price=round(predicted_price, 2),
+                        top_destinations=top_destinations,
+                        is_forecast=True  # Маркер что это прогноз
+                    )
+                )
+            
+            logger.info(f"Generated {len(forecasts)} seasonal forecasts")
+            return forecasts
+        except Exception as e:
+            logger.error(f"Error generating seasonal forecast: {e}", exc_info=True)
+            raise
     
     def forecast_demand(
         self, 
