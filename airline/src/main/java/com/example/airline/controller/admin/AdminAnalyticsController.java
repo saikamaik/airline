@@ -243,4 +243,26 @@ public class AdminAnalyticsController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
+
+    /**
+     * Получить прогноз сезонных трендов на N месяцев вперед
+     */
+    @GetMapping("/forecast/seasonal")
+    public ResponseEntity<JsonNode> getSeasonalForecast(
+            @RequestParam(defaultValue = "3") int forecast_months
+    ) {
+        try {
+            JsonNode result = mlServiceClient.getSeasonalForecast(forecast_months)
+                    .block(Duration.ofSeconds(30));
+            if (result != null) {
+                return ResponseEntity.ok(result);
+            }
+            // Возвращаем пустой массив вместо ошибки для graceful degradation
+            return ResponseEntity.ok(com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.arrayNode());
+        } catch (Exception e) {
+            logger.error("Error getting seasonal forecast", e);
+            // Возвращаем пустой массив вместо ошибки 500
+            return ResponseEntity.ok(com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.arrayNode());
+        }
+    }
 }

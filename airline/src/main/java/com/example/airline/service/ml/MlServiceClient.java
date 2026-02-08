@@ -267,4 +267,25 @@ public class MlServiceClient {
                 .timeout(Duration.ofSeconds(15))
                 .onErrorResume(e -> Mono.empty());
     }
+
+    /**
+     * Получить прогноз сезонных трендов на N месяцев вперед
+     */
+    public Mono<JsonNode> getSeasonalForecast(int forecastMonths) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/analytics/forecast/seasonal")
+                        .queryParam("forecast_months", forecastMonths)
+                        .build())
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(30))
+                .doOnError(e -> org.slf4j.LoggerFactory.getLogger(MlServiceClient.class)
+                        .error("Error getting seasonal forecast: {}", e.getMessage()))
+                .onErrorResume(e -> {
+                    org.slf4j.LoggerFactory.getLogger(MlServiceClient.class)
+                            .warn("ML service returned error for seasonal forecast, returning empty");
+                    return Mono.empty();
+                });
+    }
 }
