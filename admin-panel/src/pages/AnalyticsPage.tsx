@@ -748,8 +748,8 @@ export default function AnalyticsPage() {
                       </ResponsiveContainer>
                       <Alert severity="info" sx={{ mt: 2 }}>
                         <Typography variant="body2">
-                          <strong>Прогноз</strong> отображается пунктирной линией и оранжевыми точками. 
-                          Модель анализирует исторические данные за 24 месяца и учитывает сезонные паттерны.
+                          <strong>Прогноз</strong> отображается оранжевыми точками. 
+                          Модель анализирует исторические данные за последний год и учитывает сезонные паттерны.
                         </Typography>
                       </Alert>
                       <Box sx={{ mt: 2 }}>

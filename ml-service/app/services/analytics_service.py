@@ -181,20 +181,20 @@ class AnalyticsService:
         try:
             logger.info(f"Forecasting seasonal trends for {forecast_months} months ahead")
             
-            # Получаем исторические данные за последние 24 месяца для учета сезонности
-            monthly_stats = self.data_service.get_monthly_stats(24)
+            # Получаем исторические данные за последние 12 месяцев для учета сезонности
+            monthly_stats = self.data_service.get_monthly_stats(12)
             
             logger.info(f"Retrieved {len(monthly_stats)} months of historical data")
             
-            if monthly_stats.empty or len(monthly_stats) < 3:
-                logger.warning("Insufficient historical data for seasonal forecast")
+            if monthly_stats.empty or len(monthly_stats) < 2:
+                logger.warning(f"Insufficient historical data for seasonal forecast: got {len(monthly_stats)} months, need at least 2")
                 return []
             
             # Подготавливаем данные для модели
             monthly_stats = monthly_stats.sort_values('month')
         except Exception as e:
             logger.error(f"Error loading historical data for seasonal forecast: {e}", exc_info=True)
-            raise
+            return []
         
         try:
             # Создаем признаки: номер месяца в году (1-12) для учета сезонности
@@ -276,7 +276,7 @@ class AnalyticsService:
             return forecasts
         except Exception as e:
             logger.error(f"Error generating seasonal forecast: {e}", exc_info=True)
-            raise
+            return []
     
     def forecast_demand(
         self, 
