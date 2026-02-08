@@ -139,6 +139,11 @@ export default function EmployeeDashboard() {
   };
 
   const handleViewRequest = async (request: ClientRequestDto) => {
+    if (!request.id) {
+      setError('Некорректная заявка');
+      return;
+    }
+    
     setSelectedRequest(request);
     setNewStatus(request.status || 'NEW');
     setDialogOpen(true);
@@ -153,7 +158,7 @@ export default function EmployeeDashboard() {
   };
 
   const handleUpdateStatus = async () => {
-    if (!selectedRequest) return;
+    if (!selectedRequest || !selectedRequest.id) return;
     
     try {
       await employeeApi.updateRequestStatus(selectedRequest.id, newStatus);
@@ -167,7 +172,7 @@ export default function EmployeeDashboard() {
   };
 
   const handleAddComment = async () => {
-    if (!selectedRequest || !comment.trim()) return;
+    if (!selectedRequest || !selectedRequest.id || !comment.trim()) return;
     
     try {
       await employeeApi.addComment(selectedRequest.id, comment, false);
@@ -383,7 +388,8 @@ export default function EmployeeDashboard() {
                             <IconButton
                               size="small"
                               color="success"
-                              onClick={() => handleTakeRequest(request.id)}
+                              onClick={() => request.id && handleTakeRequest(request.id)}
+                              disabled={!request.id}
                               title="Взять в работу"
                             >
                               <CheckCircle />
