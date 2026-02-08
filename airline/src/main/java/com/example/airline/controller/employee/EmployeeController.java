@@ -67,6 +67,59 @@ public class EmployeeController {
         return ResponseEntity.ok(requests);
     }
     
+    @GetMapping("/requests/available")
+    public ResponseEntity<Page<ClientRequestDto>> getAvailableRequests(
+            @RequestParam(required = false) RequestStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        
+        Pageable pageable = PageRequest.of(page, size, Sort.by("priority").descending()
+                .and(Sort.by("createdAt").ascending()));
+        
+        Page<ClientRequestDto> requests = status != null
+                ? requestService.findAvailableRequestsByStatus(status, pageable)
+                : requestService.findAvailableRequests(pageable);
+        
+        return ResponseEntity.ok(requests);
+    }
+    
+    @PatchMapping("/requests/{id}/take")
+    public ResponseEntity<ClientRequestDto> takeRequest(
+            @PathVariable Long id,
+            Authentication authentication) {
+        
+        Long employeeId = getCurrentEmployeeId(authentication);
+        if (employeeId == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
+        }
+        
+        try {
+            ClientRequestDto updated = requestService.takeRequest(id, employeeId);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    @PatchMapping("/requests/{id}/status")
+    public ResponseEntity<ClientRequestDto> updateRequestStatus(
+            @PathVariable Long id,
+            @RequestParam RequestStatus status,
+            Authentication authentication) {
+        
+        Long employeeId = getCurrentEmployeeId(authentication);
+        if (employeeId == null) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
+        }
+        
+        try {
+            ClientRequestDto updated = requestService.updateStatusByEmployee(id, status, employeeId);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
     @GetMapping("/sales")
     public ResponseEntity<EmployeeSalesDto> getMySales(
             Authentication authentication,

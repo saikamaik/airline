@@ -271,6 +271,92 @@ public class ClientRequestService {
     }
     
     /**
+     * Получить доступные заявки для сотрудников (без назначенного сотрудника)
+     */
+    @Transactional(readOnly = true)
+    public Page<ClientRequestDto> findAvailableRequests(Pageable pageable) {
+        return requestRepository.findByEmployeeIsNull(pageable)
+                .map(ClientRequestMapper::toDto);
+    }
+    
+    /**
+     * Получить доступные заявки для сотрудников по статусу
+     */
+    @Transactional(readOnly = true)
+    public Page<ClientRequestDto> findAvailableRequestsByStatus(RequestStatus status, Pageable pageable) {
+        return requestRepository.findByEmployeeIsNullAndStatus(status, pageable)
+                .map(ClientRequestMapper::toDto);
+    }
+    
+    /**
+     * Взять заявку в работу (назначить сотрудника и установить статус IN_PROGRESS)
+     */
+    public ClientRequestDto takeRequest(Long requestId, Long employeeId) {
+        ClientRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Request not found: " + requestId));
+        
+        // Проверяем, что заявка еще не назначена на сотрудника
+        if (request.getEmployee() != null) {
+            throw new IllegalArgumentException("Request is already assigned to employee: " + request.getEmployee().getFullName());
+        }
+        
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + employeeId));
+        
+        // Назначаем сотрудника
+        request.setEmployee(employee);
+        
+        // Если статус не IN_PROGRESS, меняем на IN_PROGRESS
+        RequestStatus oldStatus = request.getStatus();
+        if (oldStatus != RequestStatus.IN_PROGRESS) {
+            request.setStatus(RequestStatus.IN_PROGRESS);
+            historyService.logChange(request, employee, "STATUS", oldStatus.name(), RequestStatus.IN_PROGRESS.name(),
+                    "Заявка взята в работу сотрудником " + employee.getFullName());
+        }
+        
+        historyService.logChange(request, employee, "EMPLOYEE", null, employee.getFullName(),
+                "Сотрудник взял заявку в работу: " + employee.getFullName());
+        
+        request = requestRepository.save(request);
+        
+        // Отправляем email-уведомление сотруднику о назначении заявки
+        emailService.sendRequestAssignedNotification(request, employee);
+        
+        return ClientRequestMapper.toDto(request);
+    }
+    
+    /**
+     * Обновить статус заявки сотрудником (только для его заявок)
+     */
+    public ClientRequestDto updateStatusByEmployee(Long requestId, RequestStatus status, Long employeeId) {
+        ClientRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Request not found: " + requestId));
+        
+        // Проверяем, что заявка назначена на этого сотрудника
+        if (request.getEmployee() == null || !request.getEmployee().getId().equals(employeeId)) {
+            throw new IllegalArgumentException("You are not assigned to this request");
+        }
+        
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new IllegalArgumentException("Employee not found: " + employeeId));
+        
+        RequestStatus oldStatus = request.getStatus();
+        
+        if (!oldStatus.equals(status)) {
+            request.setStatus(status);
+            historyService.logChange(request, employee, "STATUS", oldStatus.name(), status.name(),
+                    "Статус изменен сотрудником с " + oldStatus + " на " + status);
+            
+            // Отправляем email-уведомление клиенту об изменении статуса
+            emailService.sendStatusChangedNotification(request, oldStatus);
+            
+            request = requestRepository.save(request);
+        }
+        
+        return ClientRequestMapper.toDto(request);
+    }
+    
+    /**
      * Автоматическое определение приоритета заявки на основе различных факторов
      */
     private RequestPriority determinePriority(ClientRequestDto dto, Tour tour, Client client) {
