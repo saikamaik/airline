@@ -20,6 +20,7 @@ import {
   CircularProgress,
   Card,
   CardContent,
+  MenuItem,
 } from '@mui/material';
 import {
   Download,
@@ -726,7 +727,6 @@ export default function AnalyticsPage() {
                                 <circle cx={cx} cy={cy} r={4} fill="#8884d8" stroke="#8884d8" strokeWidth={2} />
                               );
                             }}
-                            strokeDasharray={(entry) => entry?.is_forecast ? "5 5" : ""}
                           />
                           <Line
                             yAxisId="right"
@@ -743,7 +743,6 @@ export default function AnalyticsPage() {
                                 <circle cx={cx} cy={cy} r={4} fill="#ff7300" stroke="#ff7300" strokeWidth={2} />
                               );
                             }}
-                            strokeDasharray={(entry) => entry?.is_forecast ? "5 5" : ""}
                           />
                         </LineChart>
                       </ResponsiveContainer>
