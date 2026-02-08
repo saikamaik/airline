@@ -31,6 +31,7 @@ fun ProfileScreen(
 ) {
     val viewModel: ProfileViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
+    val isAuthorized by viewModel.isAuthorized.collectAsState()
     
     val context = LocalContext.current
     val themePreferences = ThemePreferences(context)
@@ -54,6 +55,21 @@ fun ProfileScreen(
                 titleContentColor = MaterialTheme.colorScheme.onPrimary
             )
         )
+        
+        // Проверка авторизации
+        if (!isAuthorized) {
+            com.example.travelagency.presentation.view.common.UnauthorizedScreen(
+                title = "Войдите в аккаунт",
+                message = "Для просмотра профиля необходимо войти в систему",
+                onSignInClick = {
+                    navController.navigate(Screen.SignIn.route)
+                },
+                onSignUpClick = {
+                    navController.navigate(Screen.SignUp.route)
+                }
+            )
+            return@Column
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()

@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import javax.inject.Inject
 
 private const val TAG = "HomeViewModel"
@@ -36,12 +38,19 @@ class HomeViewModel @Inject constructor(
     private val _isLoadingRecommendations = MutableStateFlow(false)
     val isLoadingRecommendations: StateFlow<Boolean> = _isLoadingRecommendations
 
+    private var searchJob: Job? = null
+
     fun postUiEvent(event: HomeUiEvent) {
         when (event) {
             is HomeUiEvent.OnSearchQueryChange -> onSearchQueryChange(event.query)
             is HomeUiEvent.OnSearch -> searchTours()
             is HomeUiEvent.OnRefresh -> refreshTours()
             is HomeUiEvent.LoadMoreTours -> loadMoreTours()
+            is HomeUiEvent.ToggleFilters -> toggleFilters()
+            is HomeUiEvent.OnMinPriceChange -> onMinPriceChange(event.price)
+            is HomeUiEvent.OnMaxPriceChange -> onMaxPriceChange(event.price)
+            is HomeUiEvent.ApplyFilters -> applyFilters()
+            is HomeUiEvent.ClearFilters -> clearFilters()
         }
     }
 
@@ -85,6 +94,19 @@ class HomeViewModel @Inject constructor(
     private fun onSearchQueryChange(query: String) {
         Log.d(TAG, "Search query changed: $query")
         _uiState.value = _uiState.value.copy(searchQuery = query)
+        
+        // Отменяем предыдущий поиск
+        searchJob?.cancel()
+        
+        // Запускаем новый поиск с задержкой
+        searchJob = viewModelScope.launch {
+            delay(500) // Задержка 500мс для debounce
+            if (query.isBlank()) {
+                loadTours() // Если запрос пустой, загружаем все туры
+            } else {
+                searchTours() // Иначе выполняем поиск
+            }
+        }
     }
 
     private fun loadTours() = viewModelScope.launch {
@@ -129,7 +151,10 @@ class HomeViewModel @Inject constructor(
 
     private fun searchTours() = viewModelScope.launch {
         val query = _uiState.value.searchQuery
-        if (query.isBlank()) {
+        val minPrice = _uiState.value.minPrice
+        val maxPrice = _uiState.value.maxPrice
+        
+        if (query.isBlank() && minPrice == null && maxPrice == null) {
             loadTours()
             return@launch
         }
@@ -142,9 +167,9 @@ class HomeViewModel @Inject constructor(
         )
 
         val response = tourRepository.searchTours(
-            destination = query,
-            minPrice = null,
-            maxPrice = null,
+            destination = query.ifBlank { null },
+            minPrice = minPrice,
+            maxPrice = maxPrice,
             page = 0,
             size = _uiState.value.pageSize
         ).first()
@@ -172,6 +197,34 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    private fun toggleFilters() {
+        _uiState.value = _uiState.value.copy(
+            showFilters = !_uiState.value.showFilters
+        )
+    }
+
+    private fun onMinPriceChange(price: Double?) {
+        _uiState.value = _uiState.value.copy(minPrice = price)
+    }
+
+    private fun onMaxPriceChange(price: Double?) {
+        _uiState.value = _uiState.value.copy(maxPrice = price)
+    }
+
+    private fun applyFilters() {
+        Log.d(TAG, "Applying filters: minPrice=${_uiState.value.minPrice}, maxPrice=${_uiState.value.maxPrice}")
+        searchTours()
+    }
+
+    private fun clearFilters() {
+        _uiState.value = _uiState.value.copy(
+            minPrice = null,
+            maxPrice = null,
+            searchQuery = ""
+        )
+        loadTours()
+    }
+
     private fun refreshTours() = viewModelScope.launch {
         _uiState.value = _uiState.value.copy(isRefreshing = true)
         if (_uiState.value.searchQuery.isBlank()) {
@@ -192,15 +245,17 @@ class HomeViewModel @Inject constructor(
         
         val nextPage = currentState.currentPage + 1
         val query = currentState.searchQuery
+        val minPrice = currentState.minPrice
+        val maxPrice = currentState.maxPrice
 
         try {
-            val response = if (query.isBlank()) {
+            val response = if (query.isBlank() && minPrice == null && maxPrice == null) {
                 tourRepository.getAllTours(page = nextPage, size = currentState.pageSize).first()
             } else {
                 tourRepository.searchTours(
-                    destination = query,
-                    minPrice = null,
-                    maxPrice = null,
+                    destination = query.ifBlank { null },
+                    minPrice = minPrice,
+                    maxPrice = maxPrice,
                     page = nextPage,
                     size = currentState.pageSize
                 ).first()

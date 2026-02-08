@@ -2,6 +2,7 @@ package com.example.travelagency.presentation.view.myRequestsScreen
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.travelagency.domain.AuthRepository
 import com.example.travelagency.domain.TourRepository
 import com.example.travelagency.presentation.view.myRequestsScreen.uiEvent.MyRequestsUiEvent
 import com.example.travelagency.presentation.view.myRequestsScreen.uiState.MyRequestsUiState
@@ -13,11 +14,15 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MyRequestsViewModel @Inject constructor(
-    private val tourRepository: TourRepository
+    private val tourRepository: TourRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState: MutableStateFlow<MyRequestsUiState> = MutableStateFlow(MyRequestsUiState())
     var uiState: StateFlow<MyRequestsUiState> = _uiState
+
+    private val _isAuthorized = MutableStateFlow(false)
+    val isAuthorized: StateFlow<Boolean> = _isAuthorized
 
     fun postUiEvent(event: MyRequestsUiEvent) {
         when (event) {
@@ -26,7 +31,15 @@ class MyRequestsViewModel @Inject constructor(
     }
 
     init {
-        loadRequests()
+        checkAuthorization()
+        if (_isAuthorized.value) {
+            loadRequests()
+        }
+    }
+
+    private fun checkAuthorization() {
+        val user = authRepository.getCurrentUser()
+        _isAuthorized.value = user != null
     }
 
     private fun loadRequests() = viewModelScope.launch {
