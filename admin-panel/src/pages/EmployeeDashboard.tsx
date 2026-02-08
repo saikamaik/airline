@@ -116,6 +116,23 @@ export default function EmployeeDashboard() {
     }
   };
 
+  const loadAllRequests = async () => {
+    try {
+      // Загружаем обе вкладки одновременно
+      const [profileData, availableData, requestsData] = await Promise.all([
+        employeeApi.getProfile(),
+        employeeApi.getAvailableRequests(statusFilter || undefined, page, 20),
+        employeeApi.getMyRequests(statusFilter || undefined, page, 20),
+      ]);
+      setProfile(profileData);
+      setAvailableRequests(availableData.content);
+      setRequests(requestsData.content);
+    } catch (error) {
+      console.error('Error loading all requests:', error);
+      setError('Ошибка при загрузке данных');
+    }
+  };
+
   const loadSales = async () => {
     try {
       const start = startDate ? startDate.toISOString().split('T')[0] : undefined;
@@ -131,7 +148,12 @@ export default function EmployeeDashboard() {
     try {
       await employeeApi.takeRequest(requestId);
       setSuccess('Заявка успешно взята в работу');
-      loadData();
+      
+      // Загружаем обе вкладки
+      await loadAllRequests();
+      
+      // Переключаемся на вкладку "Мои заявки"
+      setTabValue(1);
     } catch (error) {
       console.error('Error taking request:', error);
       setError('Ошибка при взятии заявки');
@@ -164,7 +186,9 @@ export default function EmployeeDashboard() {
       await employeeApi.updateRequestStatus(selectedRequest.id, newStatus);
       setSuccess('Статус успешно обновлен');
       setDialogOpen(false);
-      loadData();
+      
+      // Загружаем обе вкладки для актуальности данных
+      await loadAllRequests();
     } catch (error: any) {
       console.error('Error updating status:', error);
       setError(error.response?.data?.message || 'Ошибка при обновлении статуса');
