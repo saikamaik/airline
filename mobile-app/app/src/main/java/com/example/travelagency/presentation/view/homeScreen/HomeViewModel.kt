@@ -67,16 +67,9 @@ class HomeViewModel @Inject constructor(
             _isLoadingRecommendations.value = true
             Log.d(TAG, "Loading recommendations...")
             
-            // Получаем ID пользователя если он авторизован
-            val userId = try {
-                val user = authRepository.getCurrentUser().first()
-                user?.id
-            } catch (e: Exception) {
-                Log.d(TAG, "User not authenticated, loading general recommendations")
-                null
-            }
-            
-            val result = recommendationsRepository.getRecommendations(userId = userId, limit = 5)
+            // Пока передаем null, так как у UserModel нет ID
+            // В будущем можно добавить ID в модель или использовать username
+            val result = recommendationsRepository.getRecommendations(userId = null, limit = 5)
             
             result.onSuccess { recs ->
                 Log.d(TAG, "Successfully loaded ${recs.size} recommendations")

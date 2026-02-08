@@ -68,15 +68,14 @@ fun ProfileScreen(
                     navController.navigate(Screen.SignUp.route)
                 }
             )
-            return@Column
-        }
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
             // Информация о пользователе
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -155,19 +154,20 @@ fun ProfileScreen(
             }
 
             // Кнопка выхода
-            Button(
-                onClick = {
-                    viewModel.logout()
-                    navController.navigate(Screen.SignIn.route) {
-                        popUpTo(Screen.Home.route) { inclusive = true }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
-            ) {
-                Text("Выйти", fontSize = 16.sp)
+                Button(
+                    onClick = {
+                        viewModel.logout()
+                        navController.navigate(Screen.SignIn.route) {
+                            popUpTo(Screen.Home.route) { inclusive = true }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Выйти", fontSize = 16.sp)
+                }
             }
         }
     }

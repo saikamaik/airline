@@ -76,9 +76,8 @@ fun MyRequestsScreen(
                     navController.navigate(com.example.travelagency.navigation.Screen.SignUp.route)
                 }
             )
-            return@Column
-        }
-        when (val response = uiState.value.requestsResponse) {
+        } else {
+            when (val response = uiState.value.requestsResponse) {
             is Response.Loading -> {
                 Box(
                     modifier = Modifier
@@ -129,17 +128,18 @@ fun MyRequestsScreen(
                 }
             }
 
-            is Response.Failure -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = response.e ?: "Ошибка загрузки",
-                        color = MaterialTheme.colorScheme.error
-                    )
+                is Response.Failure -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = response.e ?: "Ошибка загрузки",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
         }

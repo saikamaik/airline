@@ -149,45 +149,31 @@ fun HomeScreen(
             )
 
             // Секция рекомендаций
-            if (!isLoadingRecommendations.value) {
-                if (recommendations.value.isNotEmpty()) {
-                    Text(
-                        text = "Рекомендуем для вас",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                    
-                    Column(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        recommendations.value.take(3).forEach { recommendation ->
-                            RecommendationCard(
-                                recommendation = recommendation,
-                                onClick = {
-                                    navHostController.navigate(
-                                        Screen.TourInfo.route + "/${recommendation.tourId}"
-                                    )
-                                }
-                            )
-                        }
-                    }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                } else {
-                    // Заглушка для новых пользователей
-                    Box(modifier = Modifier.padding(16.dp)) {
-                        EmptyRecommendationsCard(
-                            onExploreToursClick = {
-                                // Просто прокручиваем вниз к списку туров
-                                // Логика уже есть в UI
+            if (!isLoadingRecommendations.value && recommendations.value.isNotEmpty()) {
+                Text(
+                    text = "Рекомендуем для вас",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+                
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    recommendations.value.take(3).forEach { recommendation ->
+                        RecommendationCard(
+                            recommendation = recommendation,
+                            onClick = {
+                                navHostController.navigate(
+                                    Screen.TourInfo.route + "/${recommendation.tourId}"
+                                )
                             }
                         )
                     }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
+                
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
             Text(
