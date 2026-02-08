@@ -37,6 +37,7 @@ class SeasonalTrend(BaseModel):
     request_count: int
     avg_price: float
     top_destinations: List[str]
+    is_forecast: bool = False  # Маркер: True если это прогноз, False если исторические данные
 
 
 class DemandForecast(BaseModel):

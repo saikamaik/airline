@@ -21,8 +21,8 @@ android {
             useSupportLibrary = true
         }
         
-        // API Base URL будет переопределен в buildTypes
-        buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8080/\"")
+        // API Base URL - Railway по умолчанию
+        buildConfigField("String", "BASE_URL", "\"https://airline-production-d302.up.railway.app/\"")
     }
 
     buildTypes {
@@ -96,6 +96,9 @@ dependencies {
 
     // Security - EncryptedSharedPreferences
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // DataStore для хранения настроек темы
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

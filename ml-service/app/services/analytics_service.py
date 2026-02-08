@@ -168,6 +168,101 @@ class AnalyticsService:
         
         return trends
     
+    def forecast_seasonal_trends(self, forecast_months: int = 3) -> List[SeasonalTrend]:
+        """
+        Прогнозирование сезонных трендов на N месяцев вперед
+        
+        Args:
+            forecast_months: Количество месяцев для прогноза (по умолчанию 3)
+            
+        Returns:
+            Список прогнозов по месяцам с предсказанным спросом и ценами
+        """
+        logger.info(f"Forecasting seasonal trends for {forecast_months} months ahead")
+        
+        # Получаем исторические данные за последние 24 месяца для учета сезонности
+        monthly_stats = self.data_service.get_monthly_stats(24)
+        
+        if monthly_stats.empty or len(monthly_stats) < 3:
+            logger.warning("Insufficient historical data for seasonal forecast")
+            return []
+        
+        # Подготавливаем данные для модели
+        monthly_stats = monthly_stats.sort_values('month')
+        
+        # Создаем признаки: номер месяца в году (1-12) для учета сезонности
+        monthly_stats['month_num'] = monthly_stats['month'].apply(
+            lambda x: x.month if hasattr(x, 'month') else 1
+        )
+        
+        # Создаем временной индекс (порядковый номер месяца)
+        monthly_stats['time_index'] = range(len(monthly_stats))
+        
+        # Обучаем модели для прогноза количества заявок и средней цены
+        X = monthly_stats[['time_index', 'month_num']].values
+        y_demand = monthly_stats['request_count'].values
+        y_price = monthly_stats['avg_price'].fillna(0).values
+        
+        # Используем линейную регрессию с учетом сезонности
+        from sklearn.preprocessing import PolynomialFeatures
+        from sklearn.pipeline import make_pipeline
+        
+        # Полиномиальные признаки для лучшего улавливания сезонных паттернов
+        demand_model = make_pipeline(
+            PolynomialFeatures(degree=2),
+            LinearRegression()
+        )
+        price_model = make_pipeline(
+            PolynomialFeatures(degree=2),
+            LinearRegression()
+        )
+        
+        demand_model.fit(X, y_demand)
+        price_model.fit(X, y_price)
+        
+        logger.info("Trained seasonal forecast models")
+        
+        # Генерируем прогнозы на следующие месяцы
+        forecasts = []
+        current_date = datetime.now()
+        last_time_index = monthly_stats['time_index'].iloc[-1]
+        
+        for i in range(1, forecast_months + 1):
+            forecast_date = current_date + timedelta(days=30 * i)
+            month_num = forecast_date.month
+            time_index = last_time_index + i
+            
+            # Прогнозируем
+            X_future = np.array([[time_index, month_num]])
+            predicted_demand = max(0, int(demand_model.predict(X_future)[0]))
+            predicted_price = max(0, float(price_model.predict(X_future)[0]))
+            
+            # Получаем топ направления на основе исторических данных для этого месяца
+            same_month_data = monthly_stats[monthly_stats['month_num'] == month_num]
+            
+            top_destinations = []
+            if not same_month_data.empty:
+                # Берем последние данные для этого месяца
+                destinations = same_month_data.iloc[-1].get('destinations', [])
+                if isinstance(destinations, str):
+                    top_destinations = [d.strip() for d in destinations.strip('{}').split(',')]
+                elif isinstance(destinations, list):
+                    top_destinations = destinations
+            
+            forecasts.append(
+                SeasonalTrend(
+                    month=month_num,
+                    month_name=f"{self.MONTH_NAMES.get(month_num, str(month_num))} (прогноз)",
+                    request_count=predicted_demand,
+                    avg_price=round(predicted_price, 2),
+                    top_destinations=top_destinations,
+                    is_forecast=True  # Маркер что это прогноз
+                )
+            )
+        
+        logger.info(f"Generated {len(forecasts)} seasonal forecasts")
+        return forecasts
+    
     def forecast_demand(
         self, 
         destination: Optional[str] = None,
@@ -671,67 +766,49 @@ class AnalyticsService:
         return recommendations
     
     def get_tour_clusters(self, n_clusters: int = 3) -> List:
-        """Кластеризация туров по характеристикам"""
+        """
+        Кластеризация туров по характеристикам с гарантированным разделением на категории
+        
+        Вместо KMeans используется детерминированная кластеризация по ценовым категориям:
+        - БЮДЖЕТ: цена < 60,000₽
+        - СРЕДНИЙ: 60,000₽ <= цена <= 100,000₽
+        - ПРЕМИУМ: цена > 100,000₽
+        """
         from app.schemas.analytics import TourCluster
         
         tours = self.data_service.get_tours()
         requests = self.data_service.get_requests(180)
         
-        if tours.empty or len(tours) < n_clusters:
+        if tours.empty:
             return []
         
-        # Подготовка признаков для кластеризации
-        features = []
-        tour_ids = []
+        # Определяем ценовые пороги (актуальные для 2026 года)
+        BUDGET_MAX = 60000  # Максимальная цена бюджетных туров
+        PREMIUM_MIN = 100000  # Минимальная цена премиум туров
         
-        for _, tour in tours.iterrows():
-            tour_requests = requests[requests['tour_id'] == tour['id']]
-            popularity = len(tour_requests)
-            completed = len(tour_requests[tour_requests['status'] == 'COMPLETED'])
-            conversion = completed / popularity if popularity > 0 else 0.0
-            
-            # Нормализуем признаки
-            features.append([
-                float(tour['price']) / 100000.0,  # Нормализация цены
-                float(tour['duration_days']) / 30.0,   # Нормализация длительности
-                popularity / 10.0,                # Нормализация популярности
-                conversion                         # Конверсия уже 0-1
-            ])
-            tour_ids.append(int(tour['id']))
+        # Разделяем туры на категории по цене
+        budget_tours = tours[tours['price'] < BUDGET_MAX]
+        middle_tours = tours[(tours['price'] >= BUDGET_MAX) & (tours['price'] <= PREMIUM_MIN)]
+        premium_tours = tours[tours['price'] > PREMIUM_MIN]
         
-        if len(features) < n_clusters:
-            return []
-        
-        # Кластеризация
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
-        clusters = kmeans.fit_predict(features)
-        
-        # Группировка туров по кластерам
-        cluster_dict = {}
-        for idx, cluster_id in enumerate(clusters):
-            if cluster_id not in cluster_dict:
-                cluster_dict[cluster_id] = []
-            cluster_dict[cluster_id].append(tour_ids[idx])
+        logger.info(f"Tour distribution: Budget={len(budget_tours)}, Middle={len(middle_tours)}, Premium={len(premium_tours)}")
         
         # Формирование результата
         result = []
-        for cluster_id, tour_id_list in cluster_dict.items():
-            cluster_tours = tours[tours['id'].isin(tour_id_list)]
-            cluster_requests = requests[requests['tour_id'].isin(tour_id_list)]
+        
+        # Функция для создания кластера
+        def create_cluster(cluster_id: int, cluster_tours: pd.DataFrame, category_name: str, price_range: str) -> dict:
+            if cluster_tours.empty:
+                return None
+                
+            cluster_tour_ids = cluster_tours['id'].tolist()
+            cluster_requests = requests[requests['tour_id'].isin(cluster_tour_ids)]
             
             avg_price = cluster_tours['price'].mean()
             avg_duration = cluster_tours['duration_days'].mean()
             total_popularity = len(cluster_requests)
             completed = len(cluster_requests[cluster_requests['status'] == 'COMPLETED'])
             avg_conversion = completed / total_popularity if total_popularity > 0 else 0.0
-            
-            # Определение типа кластера по цене
-            if avg_price < 60000:
-                price_category = "бюджетные"
-            elif avg_price > 100000:
-                price_category = "премиум"
-            else:
-                price_category = "среднего класса"
             
             # Определение типа по длительности
             if avg_duration < 7:
@@ -749,47 +826,93 @@ class AnalyticsService:
             else:
                 popularity_category = "средней популярности"
             
-            # Формируем живое описание
-            if price_category == "премиум" and duration_category == "длительные":
-                description = "Премиум-туры длительного отдыха"
-            elif price_category == "премиум":
-                description = "Премиум-туры"
-            elif price_category == "бюджетные" and duration_category == "короткие":
-                description = "Бюджетные короткие туры"
-            elif price_category == "бюджетные":
-                description = "Бюджетные туры"
-            elif duration_category == "длительные":
-                description = f"Туры {price_category} длительного отдыха"
-            elif duration_category == "короткие":
-                description = f"Короткие туры {price_category}"
-            else:
-                description = f"Туры {price_category}"
-            
-            # Используем price_category для cluster_type (для совместимости с фронтендом)
-            cluster_type = price_category.replace(" класса", "")
+            # Формируем описание
+            if category_name == "бюджетные":
+                if duration_category == "короткие":
+                    description = f"Бюджетные короткие туры ({price_range})"
+                elif duration_category == "длительные":
+                    description = f"Бюджетные туры длительного отдыха ({price_range})"
+                else:
+                    description = f"Бюджетные туры ({price_range})"
+            elif category_name == "среднего класса":
+                if duration_category == "длительные":
+                    description = f"Туры среднего класса длительного отдыха ({price_range})"
+                elif duration_category == "короткие":
+                    description = f"Короткие туры среднего класса ({price_range})"
+                else:
+                    description = f"Туры среднего класса ({price_range})"
+            else:  # премиум
+                if duration_category == "длительные":
+                    description = f"Премиум-туры длительного отдыха ({price_range})"
+                else:
+                    description = f"Премиум-туры ({price_range})"
             
             # Список туров в кластере
             tours_list = []
             for _, tour in cluster_tours.iterrows():
+                tour_requests_count = len(requests[requests['tour_id'] == tour['id']])
                 tours_list.append({
-                    "tour_id": int(tour['id']),
-                    "tour_name": tour['name'],
-                    "destination": tour['destination_city'],
-                    "price": float(tour['price']),
-                    "duration": int(tour['duration_days'])
+                    'tour_id': int(tour['id']),
+                    'tour_name': tour['name'],
+                    'destination': tour['destination_city'],
+                    'price': float(tour['price']),
+                    'duration': int(tour['duration_days']),
+                    'popularity': tour_requests_count
                 })
             
-            result.append(TourCluster(
-                cluster_id=int(cluster_id),
-                cluster_type=cluster_type,
+            # Сортируем туры по популярности
+            tours_list.sort(key=lambda x: x['popularity'], reverse=True)
+            
+            return TourCluster(
+                cluster_id=cluster_id,
+                cluster_type=category_name.replace(" класса", ""),
                 description=description,
                 tours=tours_list,
                 avg_price=round(float(avg_price), 2),
                 avg_duration=round(float(avg_duration), 1),
-                total_popularity=int(total_popularity),
-                avg_conversion=round(float(avg_conversion), 3)
-            ))
+                total_popularity=total_popularity,
+                avg_conversion=round(avg_conversion, 2)
+            )
         
+        # Создаем кластеры для каждой категории
+        cluster_id = 0
+        
+        # Бюджетные туры (cluster_id=0)
+        if not budget_tours.empty:
+            cluster = create_cluster(
+                cluster_id, 
+                budget_tours, 
+                "бюджетные",
+                f"до {BUDGET_MAX:,}₽".replace(",", " ")
+            )
+            if cluster:
+                result.append(cluster)
+                cluster_id += 1
+        
+        # Туры среднего класса (cluster_id=1)
+        if not middle_tours.empty:
+            cluster = create_cluster(
+                cluster_id, 
+                middle_tours, 
+                "среднего класса",
+                f"{BUDGET_MAX:,}-{PREMIUM_MIN:,}₽".replace(",", " ")
+            )
+            if cluster:
+                result.append(cluster)
+                cluster_id += 1
+        
+        # Премиум туры (cluster_id=2)
+        if not premium_tours.empty:
+            cluster = create_cluster(
+                cluster_id, 
+                premium_tours, 
+                "премиум",
+                f"от {PREMIUM_MIN:,}₽".replace(",", " ")
+            )
+            if cluster:
+                result.append(cluster)
+        
+        logger.info(f"Created {len(result)} clusters")
         return result
     
     def get_anomalous_tours(self) -> List:

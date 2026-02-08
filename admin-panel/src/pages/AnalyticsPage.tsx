@@ -188,6 +188,8 @@ export default function AnalyticsPage() {
   const [modelMetrics, setModelMetrics] = useState<ModelMetrics[]>([]);
   const [anomalousTours, setAnomalousTours] = useState<any[]>([]);
   const [seasonalTrends, setSeasonalTrends] = useState<any[]>([]);
+  const [seasonalForecast, setSeasonalForecast] = useState<any[]>([]);
+  const [forecastMonths, setForecastMonths] = useState<number>(3);
 
   useEffect(() => {
     loadStats();
@@ -622,20 +624,92 @@ export default function AnalyticsPage() {
               </Box>
             ) : (
               <Grid container spacing={3}>
-                {/* Временные ряды с сезонностью */}
-                {seasonalTrends && seasonalTrends.length > 0 && (
+                {/* Временные ряды с сезонностью + прогноз */}
+                {(seasonalTrends.length > 0 || seasonalForecast.length > 0) && (
                   <Grid item xs={12}>
                     <Paper sx={{ p: 3 }}>
-                      <Typography variant="h6" gutterBottom>
-                        Сезонные тренды (временные ряды)
-                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="h6">
+                          Сезонные тренды и прогноз
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                          <TextField
+                            select
+                            size="small"
+                            label="Прогноз на"
+                            value={forecastMonths}
+                            onChange={async (e) => {
+                              const months = Number(e.target.value);
+                              setForecastMonths(months);
+                              setMlLoading(true);
+                              try {
+                                const forecast = await mlAnalyticsApi.getSeasonalForecast(months);
+                                setSeasonalForecast(forecast);
+                              } catch (error) {
+                                console.error('Error loading forecast:', error);
+                              } finally {
+                                setMlLoading(false);
+                              }
+                            }}
+                            sx={{ minWidth: 150 }}
+                          >
+                            <MenuItem value={1}>1 месяц</MenuItem>
+                            <MenuItem value={2}>2 месяца</MenuItem>
+                            <MenuItem value={3}>3 месяца</MenuItem>
+                            <MenuItem value={4}>4 месяца</MenuItem>
+                            <MenuItem value={5}>5 месяцев</MenuItem>
+                            <MenuItem value={6}>6 месяцев</MenuItem>
+                          </TextField>
+                        </Box>
+                      </Box>
                       <ResponsiveContainer width="100%" height={400}>
-                        <LineChart data={seasonalTrends}>
+                        <LineChart data={[...seasonalTrends, ...seasonalForecast]}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="month_name" />
                           <YAxis yAxisId="left" />
                           <YAxis yAxisId="right" orientation="right" />
-                          <Tooltip />
+                          <Tooltip 
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload;
+                                const isForecast = data.is_forecast;
+                                return (
+                                  <Box sx={{ 
+                                    bgcolor: 'background.paper', 
+                                    p: 2, 
+                                    border: 1, 
+                                    borderColor: isForecast ? 'warning.main' : 'divider',
+                                    borderRadius: 1,
+                                    boxShadow: 2
+                                  }}>
+                                    <Typography variant="subtitle2" gutterBottom>
+                                      {data.month_name}
+                                      {isForecast && (
+                                        <Chip 
+                                          label="Прогноз" 
+                                          size="small" 
+                                          color="warning" 
+                                          sx={{ ml: 1 }} 
+                                        />
+                                      )}
+                                    </Typography>
+                                    <Typography variant="body2">
+                                      Заявок: <strong>{data.request_count}</strong>
+                                    </Typography>
+                                    <Typography variant="body2">
+                                      Средняя цена: <strong>{data.avg_price.toLocaleString('ru-RU')} ₽</strong>
+                                    </Typography>
+                                    {data.top_destinations && data.top_destinations.length > 0 && (
+                                      <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                                        {data.top_destinations.join(', ')}
+                                      </Typography>
+                                    )}
+                                  </Box>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
                           <Legend />
                           <Line
                             yAxisId="left"
@@ -644,6 +718,15 @@ export default function AnalyticsPage() {
                             stroke="#8884d8"
                             name="Количество заявок"
                             strokeWidth={2}
+                            dot={(props) => {
+                              const { cx, cy, payload } = props;
+                              return payload.is_forecast ? (
+                                <circle cx={cx} cy={cy} r={4} fill="#ff9800" stroke="#ff9800" strokeWidth={2} />
+                              ) : (
+                                <circle cx={cx} cy={cy} r={4} fill="#8884d8" stroke="#8884d8" strokeWidth={2} />
+                              );
+                            }}
+                            strokeDasharray={(entry) => entry?.is_forecast ? "5 5" : ""}
                           />
                           <Line
                             yAxisId="right"
@@ -652,19 +735,42 @@ export default function AnalyticsPage() {
                             stroke="#ff7300"
                             name="Средняя цена (₽)"
                             strokeWidth={2}
+                            dot={(props) => {
+                              const { cx, cy, payload } = props;
+                              return payload.is_forecast ? (
+                                <circle cx={cx} cy={cy} r={4} fill="#ff9800" stroke="#ff9800" strokeWidth={2} />
+                              ) : (
+                                <circle cx={cx} cy={cy} r={4} fill="#ff7300" stroke="#ff7300" strokeWidth={2} />
+                              );
+                            }}
+                            strokeDasharray={(entry) => entry?.is_forecast ? "5 5" : ""}
                           />
                         </LineChart>
                       </ResponsiveContainer>
+                      <Alert severity="info" sx={{ mt: 2 }}>
+                        <Typography variant="body2">
+                          <strong>Прогноз</strong> отображается пунктирной линией и оранжевыми точками. 
+                          Модель анализирует исторические данные за 24 месяца и учитывает сезонные паттерны.
+                        </Typography>
+                      </Alert>
                       <Box sx={{ mt: 2 }}>
                         <Typography variant="subtitle2" gutterBottom>
                           Топ направлений по месяцам:
                         </Typography>
                         <Grid container spacing={2}>
-                          {seasonalTrends.map((trend, idx) => (
+                          {[...seasonalTrends, ...seasonalForecast].map((trend, idx) => (
                             <Grid item xs={12} sm={6} md={4} lg={3} key={idx}>
-                              <Paper sx={{ p: 1.5, bgcolor: 'grey.50' }}>
+                              <Paper sx={{ 
+                                p: 1.5, 
+                                bgcolor: trend.is_forecast ? 'warning.lighter' : 'grey.50',
+                                border: trend.is_forecast ? 1 : 0,
+                                borderColor: trend.is_forecast ? 'warning.main' : 'transparent'
+                              }}>
                                 <Typography variant="body2" fontWeight="bold">
                                   {trend.month_name}
+                                  {trend.is_forecast && (
+                                    <Chip label="Прогноз" size="small" color="warning" sx={{ ml: 1, height: 16 }} />
+                                  )}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
                                   {trend.request_count} заявок, {trend.avg_price.toLocaleString('ru-RU')} ₽

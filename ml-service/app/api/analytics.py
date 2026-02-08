@@ -153,6 +153,37 @@ async def get_seasonal_trends(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+@router.get("/forecast/seasonal", response_model=List[SeasonalTrend])
+async def get_seasonal_forecast(
+    forecast_months: int = Query(default=3, ge=1, le=6, description="Количество месяцев для прогноза (1-6)")
+):
+    """
+    Прогнозирование сезонных трендов на N месяцев вперед.
+    
+    Использует модель машинного обучения с учетом:
+    - Исторических данных за последние 24 месяца
+    - Сезонных паттернов
+    - Временных трендов
+    
+    Args:
+        forecast_months: Количество месяцев для прогноза (по умолчанию 3, максимум 6)
+    
+    Returns:
+        Список прогнозов с предсказанным спросом, ценами и топ-направлениями
+    """
+    try:
+        return analytics_service.forecast_seasonal_trends(forecast_months)
+    except DatabaseError as e:
+        logger.error(f"Database error in get_seasonal_forecast: {e}")
+        raise HTTPException(status_code=503, detail="Database service unavailable")
+    except ServiceUnavailableError as e:
+        logger.error(f"Service unavailable in get_seasonal_forecast: {e}")
+        raise HTTPException(status_code=503, detail="Service temporarily unavailable")
+    except Exception as e:
+        logger.error(f"Unexpected error in get_seasonal_forecast: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
 @router.get("/forecast/table", response_model=List[DemandForecastTableRow])
 async def get_demand_forecast_table():
     """

@@ -4,8 +4,11 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.travelagency.data.model.Response
+import com.example.travelagency.data.model.TourRecommendation
+import com.example.travelagency.domain.AuthRepository
 import com.example.travelagency.domain.TourRepository
 import com.example.travelagency.domain.ToursResponse
+import com.example.travelagency.domain.repository.RecommendationsRepository
 import com.example.travelagency.presentation.view.homeScreen.uiEvent.HomeUiEvent
 import com.example.travelagency.presentation.view.homeScreen.uiState.HomeUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,11 +22,19 @@ private const val TAG = "HomeViewModel"
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val tourRepository: TourRepository
+    private val tourRepository: TourRepository,
+    private val recommendationsRepository: RecommendationsRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _uiState: MutableStateFlow<HomeUiState> = MutableStateFlow(HomeUiState())
     var uiState: StateFlow<HomeUiState> = _uiState
+
+    private val _recommendations = MutableStateFlow<List<TourRecommendation>>(emptyList())
+    val recommendations: StateFlow<List<TourRecommendation>> = _recommendations
+
+    private val _isLoadingRecommendations = MutableStateFlow(false)
+    val isLoadingRecommendations: StateFlow<Boolean> = _isLoadingRecommendations
 
     fun postUiEvent(event: HomeUiEvent) {
         when (event) {
@@ -39,6 +50,36 @@ class HomeViewModel @Inject constructor(
         Log.d(TAG, "HomeViewModel initialized, loading tours...")
         Log.d(TAG, "========================================")
         loadTours()
+        loadRecommendations()
+    }
+
+    private fun loadRecommendations() = viewModelScope.launch {
+        try {
+            _isLoadingRecommendations.value = true
+            Log.d(TAG, "Loading recommendations...")
+            
+            // Получаем ID пользователя если он авторизован
+            val userId = try {
+                val user = authRepository.getCurrentUser().first()
+                user?.id
+            } catch (e: Exception) {
+                Log.d(TAG, "User not authenticated, loading general recommendations")
+                null
+            }
+            
+            val result = recommendationsRepository.getRecommendations(userId = userId, limit = 5)
+            
+            result.onSuccess { recs ->
+                Log.d(TAG, "Successfully loaded ${recs.size} recommendations")
+                _recommendations.value = recs
+            }.onFailure { error ->
+                Log.e(TAG, "Failed to load recommendations: ${error.message}")
+                // Не показываем ошибку пользователю, просто не показываем рекомендации
+                _recommendations.value = emptyList()
+            }
+        } finally {
+            _isLoadingRecommendations.value = false
+        }
     }
 
     private fun onSearchQueryChange(query: String) {

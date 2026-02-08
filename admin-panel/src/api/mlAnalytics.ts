@@ -162,6 +162,18 @@ export const mlAnalyticsApi = {
     return response.data;
   },
 
+  getSeasonalForecast: async (forecastMonths: number = 3): Promise<any[]> => {
+    try {
+      console.log(`Fetching seasonal forecast for ${forecastMonths} months ahead`);
+      const response = await apiClient.get(`/admin/analytics/forecast/seasonal?forecast_months=${forecastMonths}`);
+      console.log('Seasonal forecast API response:', response.data);
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      console.error('Error fetching seasonal forecast:', error);
+      return [];
+    }
+  },
+
   getAllDestinations: async (): Promise<string[]> => {
     const response = await apiClient.get('/admin/analytics/all-destinations');
     return response.data;

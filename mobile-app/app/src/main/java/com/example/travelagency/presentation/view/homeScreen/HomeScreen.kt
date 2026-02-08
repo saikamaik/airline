@@ -42,6 +42,8 @@ import androidx.navigation.NavHostController
 import com.example.travelagency.data.model.Response
 import com.example.travelagency.navigation.Screen
 import com.example.travelagency.presentation.view.homeScreen.components.TourCard
+import com.example.travelagency.presentation.view.homeScreen.components.RecommendationCard
+import com.example.travelagency.presentation.view.homeScreen.components.EmptyRecommendationsCard
 import com.example.travelagency.presentation.view.homeScreen.uiEvent.HomeUiEvent
 
 import android.util.Log
@@ -54,6 +56,8 @@ fun HomeScreen(
 ) {
     val viewModel: HomeViewModel = hiltViewModel()
     val uiState = viewModel.uiState.collectAsState()
+    val recommendations = viewModel.recommendations.collectAsState()
+    val isLoadingRecommendations = viewModel.isLoadingRecommendations.collectAsState()
     
     // Логирование для диагностики
     androidx.compose.runtime.LaunchedEffect(uiState.value.toursResponse) {
@@ -102,6 +106,48 @@ fun HomeScreen(
                 },
                 singleLine = true
             )
+
+            // Секция рекомендаций
+            if (!isLoadingRecommendations.value) {
+                if (recommendations.value.isNotEmpty()) {
+                    Text(
+                        text = "Рекомендуем для вас",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                    
+                    Column(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        recommendations.value.take(3).forEach { recommendation ->
+                            RecommendationCard(
+                                recommendation = recommendation,
+                                onClick = {
+                                    navHostController.navigate(
+                                        Screen.TourInfo.route + "/${recommendation.tourId}"
+                                    )
+                                }
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                } else {
+                    // Заглушка для новых пользователей
+                    Box(modifier = Modifier.padding(16.dp)) {
+                        EmptyRecommendationsCard(
+                            onExploreToursClick = {
+                                // Просто прокручиваем вниз к списку туров
+                                // Логика уже есть в UI
+                            }
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
 
             Text(
                 text = "Популярные туры",

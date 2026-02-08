@@ -1,12 +1,23 @@
 package com.example.travelagency.di
 
 import android.content.Context
+import android.util.Log
+import coil.ImageLoader
+import coil.decode.DataSource
+import coil.fetch.FetchResult
+import coil.fetch.Fetcher
+import coil.fetch.SourceResult
+import coil.request.ImageRequest
+import coil.request.Options
+import coil.util.DebugLogger
 import com.example.travelagency.BuildConfig
 import com.example.travelagency.data.api.ApiService
 import com.example.travelagency.data.repositoryImplementation.AuthRepositoryImpl
 import com.example.travelagency.data.repositoryImplementation.TourRepositoryImpl
+import com.example.travelagency.data.repositoryImplementation.RecommendationsRepositoryImpl
 import com.example.travelagency.domain.AuthRepository
 import com.example.travelagency.domain.TourRepository
+import com.example.travelagency.domain.repository.RecommendationsRepository
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -102,5 +113,24 @@ object AppModule {
     @Singleton
     fun provideFavoritesRepository(apiService: ApiService): com.example.travelagency.domain.FavoritesRepository =
         com.example.travelagency.data.repositoryImplementation.FavoritesRepositoryImpl(apiService)
+
+    @Provides
+    @Singleton
+    fun provideRecommendationsRepository(apiService: ApiService): RecommendationsRepository =
+        RecommendationsRepositoryImpl(apiService)
+
+    @Provides
+    @Singleton
+    fun provideImageLoader(
+        @ApplicationContext context: Context,
+        okHttpClient: OkHttpClient
+    ): ImageLoader {
+        return ImageLoader.Builder(context)
+            .okHttpClient(okHttpClient)
+            .logger(DebugLogger(Log.VERBOSE))
+            .crossfade(true)
+            .respectCacheHeaders(false)
+            .build()
+    }
 
 }

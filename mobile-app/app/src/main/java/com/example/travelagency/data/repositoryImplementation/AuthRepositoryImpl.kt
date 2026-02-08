@@ -33,17 +33,49 @@ class AuthRepositoryImpl @Inject constructor(
         
         // Получение EncryptedSharedPreferences для безопасного хранения токенов
         fun getEncryptedPrefs(context: Context): SharedPreferences {
-            val masterKey = MasterKey.Builder(context)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build()
+            return try {
+                val masterKey = MasterKey.Builder(context)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
 
-            return EncryptedSharedPreferences.create(
-                context,
-                PREFS_NAME,
-                masterKey,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            )
+                EncryptedSharedPreferences.create(
+                    context,
+                    PREFS_NAME,
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                )
+            } catch (e: Exception) {
+                // Если EncryptedSharedPreferences не работает (ключ изменился после переустановки),
+                // удаляем старый файл и создаем новый
+                Log.e(TAG, "Failed to get EncryptedSharedPreferences, recreating...", e)
+                try {
+                    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                        .edit()
+                        .clear()
+                        .apply()
+                    
+                    // Удаляем файл SharedPreferences
+                    context.deleteSharedPreferences(PREFS_NAME)
+                    
+                    // Пытаемся создать заново
+                    val masterKey = MasterKey.Builder(context)
+                        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                        .build()
+
+                    EncryptedSharedPreferences.create(
+                        context,
+                        PREFS_NAME,
+                        masterKey,
+                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                    )
+                } catch (e2: Exception) {
+                    // В крайнем случае используем обычный SharedPreferences
+                    Log.e(TAG, "Failed to recreate EncryptedSharedPreferences, using regular SharedPreferences", e2)
+                    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                }
+            }
         }
     }
 
