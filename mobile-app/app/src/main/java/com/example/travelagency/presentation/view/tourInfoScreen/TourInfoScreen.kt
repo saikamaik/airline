@@ -1,5 +1,6 @@
 package com.example.travelagency.presentation.view.tourInfoScreen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,7 +17,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Flight
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
@@ -35,14 +39,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
-import coil.compose.AsyncImage
 import com.example.travelagency.data.model.FlightModel
 import com.example.travelagency.data.model.Response
 import com.example.travelagency.data.model.TourModel
@@ -89,11 +91,15 @@ fun TourInfoScreen(
                 TourInfoContent(
                     tour = tourResponse.data,
                     flightsResponse = uiState.value.flightsResponse,
+                    isFavorite = uiState.value.isFavorite,
                     modifier = Modifier.padding(padding),
                     onBookClick = {
                         navHostController.navigate(
                             Screen.Request.route + "/${tourResponse.data.id}"
                         )
+                    },
+                    onFavoriteClick = {
+                        viewModel.postUiEvent(com.example.travelagency.presentation.view.tourInfoScreen.uiEvent.TourInfoUiEvent.ToggleFavorite)
                     }
                 )
             }
@@ -117,31 +123,71 @@ fun TourInfoScreen(
 private fun TourInfoContent(
     tour: TourModel,
     flightsResponse: Response<List<FlightModel>>,
+    isFavorite: Boolean,
     modifier: Modifier = Modifier,
-    onBookClick: () -> Unit
+    onBookClick: () -> Unit,
+    onFavoriteClick: () -> Unit
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
-        AsyncImage(
-            model = tour.imageUrl ?: "https://via.placeholder.com/400x200",
-            contentDescription = tour.name,
+        // Заголовок с цветным фоном
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(220.dp),
-            contentScale = ContentScale.Crop
-        )
+                .height(220.dp)
+                .background(getColorForTour(tour.id)),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Image,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = Color.White.copy(alpha = 0.7f)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = tour.name,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    maxLines = 3
+                )
+            }
+        }
 
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
-            Text(
-                text = tour.name,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = tour.name,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                
+                // Кнопка избранного
+                IconButton(onClick = onFavoriteClick) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = if (isFavorite) "Удалить из избранного" else "Добавить в избранное",
+                        tint = if (isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -316,3 +362,26 @@ private fun formatDateTime(dateTime: String): String {
         dateTime
     }
 }
+
+// Генерируем уникальный цвет для каждого тура на основе его ID
+private fun getColorForTour(tourId: Long): Color {
+    val colors = listOf(
+        Color(0xFF1ABC9C), // Turquoise
+        Color(0xFF3498DB), // Blue
+        Color(0xFF9B59B6), // Purple
+        Color(0xFFE74C3C), // Red
+        Color(0xFFF39C12), // Orange
+        Color(0xFF16A085), // Dark Turquoise
+        Color(0xFF27AE60), // Green
+        Color(0xFF2C3E50), // Dark Blue
+        Color(0xFF8E44AD), // Dark Purple
+        Color(0xFFF4D03F), // Yellow
+        Color(0xFFE67E22), // Dark Orange
+        Color(0xFF2980B9), // Strong Blue
+        Color(0xFF85C1E9), // Light Blue
+        Color(0xFFEC7063), // Light Red
+        Color(0xFF45B39D)  // Sea Green
+    )
+    return colors[(tourId % colors.size).toInt()]
+}
+

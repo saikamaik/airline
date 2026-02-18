@@ -7,7 +7,6 @@ import {
   Card,
   CardContent,
   Button,
-  TextField,
   Stack,
 } from '@mui/material';
 import {
@@ -36,7 +35,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { statisticsApi, Statistics } from '../api/statistics';
 import { authApi } from '../api/auth';

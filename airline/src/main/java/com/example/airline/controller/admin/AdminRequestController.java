@@ -32,19 +32,22 @@ public class AdminRequestController {
                 .and(Sort.by("createdAt").descending()));
         
         Page<ClientRequestDto> requests;
-        if (status != null && priority != null) {
-            requests = requestService.findByStatusAndPriority(status, priority, pageable);
-        } else if (status != null) {
-            requests = requestService.findByStatus(status, pageable);
-        } else if (priority != null) {
-            requests = requestService.findByPriority(priority, pageable);
-        } else if (startDate != null && endDate != null) {
-            requests = requestService.findByDateRange(startDate, endDate, pageable);
-        } else {
-            requests = requestService.findAllRequests(pageable);
+        try {
+            if (status != null && priority != null) {
+                requests = requestService.findByStatusAndPriority(status, priority, pageable);
+            } else if (status != null) {
+                requests = requestService.findByStatus(status, pageable);
+            } else if (priority != null) {
+                requests = requestService.findByPriority(priority, pageable);
+            } else if (startDate != null && endDate != null) {
+                requests = requestService.findByDateRange(startDate, endDate, pageable);
+            } else {
+                requests = requestService.findAllRequests(pageable);
+            }
+            return ResponseEntity.ok(requests);
+        } catch (Exception e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
-        
-        return ResponseEntity.ok(requests);
     }
 
     @GetMapping("/{id}")
@@ -64,6 +67,8 @@ public class AdminRequestController {
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
     
@@ -76,6 +81,8 @@ public class AdminRequestController {
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 

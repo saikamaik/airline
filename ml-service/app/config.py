@@ -1,25 +1,34 @@
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from functools import lru_cache
+import os
 
 
 class Settings(BaseSettings):
     """Настройки приложения"""
     
+    # Настройка Pydantic для разрешения использования model_ префикса
+    model_config = ConfigDict(
+        protected_namespaces=('settings_',),  # Разрешаем model_ префикс
+        env_file=".env"
+    )
+    
     # Основные настройки
     app_name: str = "TravelAgency ML Service"
-    debug: bool = True
+    debug: bool = os.getenv("DEBUG", "false").lower() == "true"
     
     # База данных (основной backend)
-    database_url: str = "postgresql://postgres:postgres@localhost:5432/jcourse"
+    # Pydantic автоматически читает DATABASE_URL из переменных окружения
+    database_url: str = os.getenv(
+        "DATABASE_URL", 
+        "postgresql://postgres:postgres@localhost:5432/jcourse"
+    )
     
-    # Backend API
-    backend_url: str = "http://localhost:8080"
+    # Backend API (не используется напрямую, но может быть полезен)
+    backend_url: str = os.getenv("BACKEND_URL", "http://localhost:8080")
     
     # ML модели
-    model_path: str = "./models"
-    
-    class Config:
-        env_file = ".env"
+    model_path: str = os.getenv("MODEL_PATH", "./models")
 
 
 @lru_cache()

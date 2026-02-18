@@ -45,4 +45,9 @@ sealed class Screen(
         route = "profile_screen",
         null, null
     )
+
+    object Favorites : Screen(
+        route = "favorites_screen",
+        null, null
+    )
 }

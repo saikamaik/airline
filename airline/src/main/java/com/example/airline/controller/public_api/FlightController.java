@@ -19,13 +19,25 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/flights")
 public class FlightController {
-
+    
     private final FlightService flightService;
     private final AirportService airportService;
 
     public FlightController(FlightService flightService, AirportService airportService) {
         this.flightService = flightService;
         this.airportService = airportService;
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<FlightDto>> getAllFlights(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size) {
+        try {
+            Page<FlightDto> flights = flightService.getAllFlights(page, size);
+            return ResponseEntity.ok(flights);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @PostMapping("/add")

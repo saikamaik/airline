@@ -1,12 +1,18 @@
 """Сервис рекомендаций туров на основе ML"""
 
+import os
+import logging
 from typing import List, Optional
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics.pairwise import cosine_similarity
+import joblib
 from app.schemas.tour import TourRecommendation, RecommendationRequest
 from app.services.data_service import DataService
+from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 
 class RecommendationService:
@@ -14,26 +20,115 @@ class RecommendationService:
     
     def __init__(self):
         self.data_service = DataService()
+        self.settings = get_settings()
         self.scaler = StandardScaler()
         self._tours_cache = None
         self._features_cache = None
+        self._model_cache_path = os.path.join(self.settings.model_path, "recommendation_scaler.joblib")
+        self._features_cache_path = os.path.join(self.settings.model_path, "recommendation_features.joblib")
+        self._tours_hash_cache_path = os.path.join(self.settings.model_path, "tours_hash.txt")
+        
+        # Создаем директорию для моделей если её нет
+        os.makedirs(self.settings.model_path, exist_ok=True)
+        
+        # Загружаем кэшированные модели при старте
+        self._load_cached_models()
     
     def _load_tours(self) -> pd.DataFrame:
         """Загрузить туры с кэшированием"""
         if self._tours_cache is None:
             self._tours_cache = self.data_service.get_tours(active_only=True)
+            # Проверяем, изменились ли данные
+            self._check_and_update_cache()
         return self._tours_cache
     
+    def _get_tours_hash(self, tours: pd.DataFrame) -> str:
+        """Вычислить хэш туров для проверки изменений"""
+        import hashlib
+        # Используем ID и updated_at для определения изменений
+        if tours.empty:
+            return ""
+        tour_ids = sorted(tours['id'].astype(str).tolist())
+        hash_input = "|".join(tour_ids)
+        return hashlib.md5(hash_input.encode()).hexdigest()
+    
+    def _check_and_update_cache(self):
+        """Проверить, изменились ли данные, и обновить кэш при необходимости"""
+        if self._tours_cache is None or self._tours_cache.empty:
+            return
+        
+        current_hash = self._get_tours_hash(self._tours_cache)
+        
+        # Читаем сохраненный хэш
+        saved_hash = None
+        if os.path.exists(self._tours_hash_cache_path):
+            try:
+                with open(self._tours_hash_cache_path, 'r') as f:
+                    saved_hash = f.read().strip()
+            except Exception as e:
+                logger.warning(f"Failed to read tours hash: {e}")
+        
+        # Если данные изменились, сбрасываем кэш
+        if saved_hash != current_hash:
+            logger.info("Tours data changed, invalidating feature cache")
+            self._features_cache = None
+            # Сохраняем новый хэш
+            try:
+                with open(self._tours_hash_cache_path, 'w') as f:
+                    f.write(current_hash)
+            except Exception as e:
+                logger.warning(f"Failed to save tours hash: {e}")
+    
+    def _load_cached_models(self):
+        """Загрузить кэшированные модели при старте"""
+        try:
+            if os.path.exists(self._model_cache_path):
+                self.scaler = joblib.load(self._model_cache_path)
+                logger.info("Loaded cached scaler model")
+            else:
+                logger.info("No cached scaler found, will train on first request")
+        except Exception as e:
+            logger.warning(f"Failed to load cached scaler: {e}, will train new model")
+            self.scaler = StandardScaler()
+    
+    def _save_models(self):
+        """Сохранить обученные модели"""
+        try:
+            joblib.dump(self.scaler, self._model_cache_path)
+            logger.info(f"Saved scaler model to {self._model_cache_path}")
+        except Exception as e:
+            logger.error(f"Failed to save scaler model: {e}")
+    
     def _prepare_features(self, tours: pd.DataFrame) -> np.ndarray:
-        """Подготовить признаки для ML модели"""
+        """Подготовить признаки для ML модели с кэшированием"""
+        # Пытаемся загрузить из кэша
         if self._features_cache is not None:
             return self._features_cache
+        
+        # Пытаемся загрузить из файла
+        if os.path.exists(self._features_cache_path):
+            try:
+                cached_data = joblib.load(self._features_cache_path)
+                # Проверяем, что количество туров совпадает
+                if cached_data.get('tours_count') == len(tours):
+                    self._features_cache = cached_data['features']
+                    logger.info("Loaded cached features")
+                    return self._features_cache
+            except Exception as e:
+                logger.warning(f"Failed to load cached features: {e}")
+        
+        # Если кэша нет, обучаем модель
+        logger.info("Training new features model")
         
         # Числовые признаки
         numeric_features = tours[['price', 'duration_days']].copy()
         
-        # Нормализация
-        numeric_scaled = self.scaler.fit_transform(numeric_features)
+        # Нормализация (fit только если scaler не был обучен)
+        if not hasattr(self.scaler, 'mean_') or self.scaler.mean_ is None:
+            numeric_scaled = self.scaler.fit_transform(numeric_features)
+            self._save_models()  # Сохраняем обученный scaler
+        else:
+            numeric_scaled = self.scaler.transform(numeric_features)
         
         # One-hot encoding для направлений
         destination_dummies = pd.get_dummies(
@@ -44,6 +139,16 @@ class RecommendationService:
         # Объединяем признаки
         features = np.hstack([numeric_scaled, destination_dummies.values])
         self._features_cache = features
+        
+        # Сохраняем в кэш
+        try:
+            joblib.dump({
+                'features': features,
+                'tours_count': len(tours)
+            }, self._features_cache_path)
+            logger.info(f"Saved features cache to {self._features_cache_path}")
+        except Exception as e:
+            logger.warning(f"Failed to save features cache: {e}")
         
         return features
     
@@ -244,5 +349,16 @@ class RecommendationService:
     
     def invalidate_cache(self):
         """Сбросить кэш (вызывать при обновлении туров)"""
+        logger.info("Invalidating recommendation cache")
         self._tours_cache = None
         self._features_cache = None
+        
+        # Удаляем файлы кэша
+        try:
+            if os.path.exists(self._features_cache_path):
+                os.remove(self._features_cache_path)
+            if os.path.exists(self._tours_hash_cache_path):
+                os.remove(self._tours_hash_cache_path)
+            logger.info("Cache files removed")
+        except Exception as e:
+            logger.warning(f"Failed to remove cache files: {e}")

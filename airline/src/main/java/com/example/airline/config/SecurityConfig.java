@@ -15,7 +15,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
@@ -23,40 +23,53 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-
+    private final com.example.airline.security.JwtUtil jwtUtil;
+    
     public SecurityConfig(CustomUserDetailsService userDetailsService, 
-                         JwtAuthenticationFilter jwtAuthenticationFilter) {
+                         com.example.airline.security.JwtUtil jwtUtil) {
         this.userDetailsService = userDetailsService;
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.jwtUtil = jwtUtil;
+    }
+    
+    @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter() {
+        return new JwtAuthenticationFilter(jwtUtil, userDetailsService);
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        JwtAuthenticationFilter jwtFilter = jwtAuthenticationFilter();
+        
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(request -> {
                     var corsConfig = new org.springframework.web.cors.CorsConfiguration();
-                    corsConfig.setAllowedOrigins(java.util.List.of("http://localhost:3000", "http://localhost:5173"));
+                    corsConfig.setAllowedOriginPatterns(java.util.List.of(
+                        "http://localhost:*",
+                        "http://10.0.2.2:*",
+                        "https://*.vercel.app",
+                        "https://*--*.vercel.app",
+                        "https://*.railway.app",
+                        "https://*.up.railway.app"
+                    ));
                     corsConfig.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
                     corsConfig.setAllowedHeaders(java.util.List.of("*"));
                     corsConfig.setAllowCredentials(true);
+                    corsConfig.setMaxAge(3600L);
+                    corsConfig.setExposedHeaders(java.util.List.of("*"));
                     return corsConfig;
                 }))
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints (доступны без авторизации)
+                        .requestMatchers("/", "/health", "/actuator/health").permitAll()
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**").permitAll()
-                        // Просмотр туров и рейсов - публичный
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/tours/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/flights/**").permitAll()
-                        // Создание заявки - только для авторизованных пользователей
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/tours/*/request").authenticated()
-                        // Admin endpoints
+                        .requestMatchers("/favorites/**").authenticated()
+                        .requestMatchers("/client/requests").authenticated()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
-                        // Employee endpoints
                         .requestMatchers("/employee/**").hasAnyRole("EMPLOYEE", "ADMIN")
-                        // Boarding requires authentication
                         .requestMatchers("/boardings/**").authenticated()
                         .anyRequest().authenticated()
                 )
@@ -64,8 +77,20 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-
+                .addFilterBefore(jwtFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"error\":\"Unauthorized: " + authException.getMessage() + "\"}");
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"error\":\"Forbidden: " + accessDeniedException.getMessage() + "\"}");
+                        })
+                );
+        
         return http.build();
     }
 

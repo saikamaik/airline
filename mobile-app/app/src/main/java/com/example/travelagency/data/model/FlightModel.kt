@@ -1,5 +1,8 @@
 package com.example.travelagency.data.model
 
+
+
+
 data class FlightModel(
     val flightId: Int? = null,
     val flightNo: String = "",

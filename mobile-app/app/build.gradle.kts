@@ -20,10 +20,19 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        
+        // API Base URL - Railway по умолчанию
+        buildConfigField("String", "BASE_URL", "\"https://airline-production-d302.up.railway.app/\"")
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "BASE_URL", "\"https://airline-production-d302.up.railway.app/\"")
+        }
+        
         release {
+            buildConfigField("String", "BASE_URL", "\"https://airline-production-d302.up.railway.app/\"")
+            
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -40,9 +49,10 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
+        kotlinCompilerExtensionVersion = "1.5.8"
     }
     packaging {
         resources {
@@ -53,6 +63,7 @@ android {
 
 dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
     implementation("androidx.activity:activity-compose:1.8.2")
     implementation(platform("androidx.compose:compose-bom:2023.08.00"))
@@ -82,6 +93,12 @@ dependencies {
 
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    // Security - EncryptedSharedPreferences
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
+    // DataStore для хранения настроек темы
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
 
     // Testing
     testImplementation("junit:junit:4.13.2")

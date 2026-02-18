@@ -35,9 +35,20 @@ public class TourController {
     @GetMapping
     public ResponseEntity<Page<TourDto>> getAllTours(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String destination,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        Page<TourDto> tours = tourService.findActiveTours(pageable);
+        
+        // Если есть фильтры, используем findWithFilters, иначе только активные туры
+        Page<TourDto> tours;
+        if (destination != null || minPrice != null || maxPrice != null) {
+            tours = tourService.findWithFilters(destination, minPrice, maxPrice, pageable);
+        } else {
+            tours = tourService.findActiveTours(pageable);
+        }
+        
         return ResponseEntity.ok(tours);
     }
 

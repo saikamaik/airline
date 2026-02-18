@@ -21,9 +21,6 @@ public class AuthController {
         this.authService = authService;
     }
 
-    /**
-     * Вход в систему (для всех пользователей).
-     */
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody AuthRequest request) {
         try {
@@ -40,10 +37,6 @@ public class AuthController {
         }
     }
     
-    /**
-     * Регистрация нового клиента (через мобильное приложение).
-     * После успешной регистрации возвращает JWT-токен для автоматического входа.
-     */
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         try {

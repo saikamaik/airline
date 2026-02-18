@@ -2,12 +2,18 @@ package com.example.travelagency.data.repositoryImplementation
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import com.example.travelagency.data.api.ApiService
 import com.example.travelagency.data.model.AuthResponse
+import com.example.travelagency.data.model.ErrorResponse
 import com.example.travelagency.data.model.LoginRequest
 import com.example.travelagency.data.model.RegisterRequest
 import com.example.travelagency.data.model.Response
 import com.example.travelagency.data.model.UserModel
+import com.google.gson.Gson
+import com.google.gson.JsonSyntaxException
 import com.example.travelagency.domain.AuthRepository
 import com.example.travelagency.domain.SignInResponse
 import com.example.travelagency.domain.SignUpResponse
@@ -21,7 +27,59 @@ class AuthRepositoryImpl @Inject constructor(
     @ApplicationContext val context: Context
 ) : AuthRepository {
 
-    private val prefs: SharedPreferences = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+    companion object {
+        private const val TAG = "AuthRepository"
+        private const val PREFS_NAME = "auth_prefs"
+        
+        // Получение EncryptedSharedPreferences для безопасного хранения токенов
+        fun getEncryptedPrefs(context: Context): SharedPreferences {
+            return try {
+                val masterKey = MasterKey.Builder(context)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build()
+
+                EncryptedSharedPreferences.create(
+                    context,
+                    PREFS_NAME,
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                )
+            } catch (e: Exception) {
+                // Если EncryptedSharedPreferences не работает (ключ изменился после переустановки),
+                // удаляем старый файл и создаем новый
+                Log.e(TAG, "Failed to get EncryptedSharedPreferences, recreating...", e)
+                try {
+                    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                        .edit()
+                        .clear()
+                        .apply()
+                    
+                    // Удаляем файл SharedPreferences
+                    context.deleteSharedPreferences(PREFS_NAME)
+                    
+                    // Пытаемся создать заново
+                    val masterKey = MasterKey.Builder(context)
+                        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                        .build()
+
+                    EncryptedSharedPreferences.create(
+                        context,
+                        PREFS_NAME,
+                        masterKey,
+                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                    )
+                } catch (e2: Exception) {
+                    // В крайнем случае используем обычный SharedPreferences
+                    Log.e(TAG, "Failed to recreate EncryptedSharedPreferences, using regular SharedPreferences", e2)
+                    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                }
+            }
+        }
+    }
+
+    private val prefs: SharedPreferences = getEncryptedPrefs(context)
 
     override fun signIn(username: String, password: String): Flow<SignInResponse> = flow {
         emit(Response.Loading)
@@ -31,12 +89,17 @@ class AuthRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 val authResponse = response.body()!!
                 saveToken(authResponse.token, authResponse.username)
+                Log.d(TAG, "User signed in successfully: $username")
                 emit(Response.Success(authResponse))
             } else {
-                emit(Response.Failure(e = "Неверный логин или пароль"))
+                val errorMsg = "Неверный логин или пароль"
+                Log.w(TAG, "Sign in failed: ${response.code()} - ${response.message()}")
+                emit(Response.Failure(e = errorMsg))
             }
         } catch (e: Exception) {
-            emit(Response.Failure(e = e.message ?: "Ошибка подключения к серверу"))
+            val errorMsg = e.message ?: "Ошибка подключения к серверу"
+            Log.e(TAG, "Sign in error", e)
+            emit(Response.Failure(e = errorMsg))
         }
     }
 
@@ -63,12 +126,19 @@ class AuthRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 val authResponse = response.body()!!
                 saveToken(authResponse.token, authResponse.username)
+                Log.d(TAG, "User registered successfully: $username")
                 emit(Response.Success(authResponse))
             } else {
-                emit(Response.Failure(e = "Ошибка регистрации"))
+                // Парсим ошибку из JSON ответа
+                val errorMsg = parseErrorResponse(response.errorBody()?.string())
+                    ?: "Ошибка регистрации"
+                Log.w(TAG, "Registration failed: ${response.code()} - $errorMsg")
+                emit(Response.Failure(e = errorMsg))
             }
         } catch (e: Exception) {
-            emit(Response.Failure(e = e.message ?: "Ошибка подключения к серверу"))
+            val errorMsg = e.message ?: "Ошибка подключения к серверу"
+            Log.e(TAG, "Registration error", e)
+            emit(Response.Failure(e = errorMsg))
         }
     }
 
@@ -77,7 +147,10 @@ class AuthRepositoryImpl @Inject constructor(
         val username = prefs.getString("username", null)
         return if (token != null && username != null) {
             UserModel(username = username, token = token)
-        } else null
+        } else {
+            Log.d(TAG, "No current user found")
+            null
+        }
     }
 
     override fun saveToken(token: String, username: String) {
@@ -97,6 +170,22 @@ class AuthRepositoryImpl @Inject constructor(
 
     override fun isLoggedIn(): Boolean {
         return getToken() != null
+    }
+
+    /**
+     * Парсит JSON ответ с ошибкой от сервера
+     */
+    private fun parseErrorResponse(errorBody: String?): String? {
+        if (errorBody.isNullOrBlank()) return null
+        
+        return try {
+            val gson = Gson()
+            val errorResponse = gson.fromJson(errorBody, ErrorResponse::class.java)
+            errorResponse.error ?: errorResponse.message
+        } catch (e: JsonSyntaxException) {
+            Log.w(TAG, "Failed to parse error response: $errorBody", e)
+            null
+        }
     }
 
 }

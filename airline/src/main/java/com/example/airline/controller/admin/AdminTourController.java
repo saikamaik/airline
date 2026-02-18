@@ -29,10 +29,8 @@ public class AdminTourController {
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        System.out.println("=== AdminTourController: Запрос туров, страница: " + page + ", размер: " + size);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<TourDto> tours = tourService.findWithFilters(destination, minPrice, maxPrice, pageable);
-        System.out.println("=== AdminTourController: Найдено туров: " + tours.getTotalElements());
         return ResponseEntity.ok(tours);
     }
 
@@ -43,6 +41,8 @@ public class AdminTourController {
             return ResponseEntity.status(HttpStatus.CREATED).body(created);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -55,6 +55,8 @@ public class AdminTourController {
             return ResponseEntity.ok(updated);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -65,6 +67,8 @@ public class AdminTourController {
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 }

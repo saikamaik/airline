@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Разрешаем все HTTP и HTTPS соединения -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+    
+    <!-- Явно разрешаем домены для изображений -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">unsplash.com</domain>
+        <domain includeSubdomains="true">images.unsplash.com</domain>
+        <domain includeSubdomains="true">picsum.photos</domain>
+        <domain includeSubdomains="true">loremflickr.com</domain>
+        <domain includeSubdomains="true">dummyimage.com</domain>
+        <domain includeSubdomains="true">via.placeholder.com</domain>
+        <domain includeSubdomains="true">placehold.co</domain>
+        <domain includeSubdomains="true">placeholder.com</domain>
+    </domain-config>
+</network-security-config>

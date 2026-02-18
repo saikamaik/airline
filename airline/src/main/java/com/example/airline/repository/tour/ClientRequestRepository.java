@@ -82,5 +82,11 @@ public interface ClientRequestRepository extends JpaRepository<ClientRequest, Lo
     Page<ClientRequest> findByDateRange(@Param("startDate") java.time.LocalDate startDate, 
                                         @Param("endDate") java.time.LocalDate endDate, 
                                         Pageable pageable);
+    
+    // Получить заявки без назначенного сотрудника (доступные для взятия)
+    Page<ClientRequest> findByEmployeeIsNull(Pageable pageable);
+    
+    // Получить заявки без назначенного сотрудника по статусу
+    Page<ClientRequest> findByEmployeeIsNullAndStatus(RequestStatus status, Pageable pageable);
 }
 

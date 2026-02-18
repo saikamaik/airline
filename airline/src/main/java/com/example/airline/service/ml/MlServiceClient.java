@@ -21,8 +21,21 @@ public class MlServiceClient {
     public MlServiceClient(
             @Value("${ml.service.url:http://localhost:8000}") String mlServiceUrl
     ) {
+        // Обработка URL: если не указан протокол, добавляем https://
+        String processedUrl = mlServiceUrl;
+        if (!processedUrl.startsWith("http://") && !processedUrl.startsWith("https://")) {
+            processedUrl = "https://" + processedUrl;
+        }
+        // Убираем trailing slash если есть
+        if (processedUrl.endsWith("/")) {
+            processedUrl = processedUrl.substring(0, processedUrl.length() - 1);
+        }
+        
+        org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(MlServiceClient.class);
+        logger.info("=== MlServiceClient: Initialized with baseURL: {}", processedUrl);
+        
         this.webClient = WebClient.builder()
-                .baseUrl(mlServiceUrl)
+                .baseUrl(processedUrl)
                 .build();
     }
 
@@ -121,15 +134,46 @@ public class MlServiceClient {
     public Mono<JsonNode> getDemandForecast(String destination) {
         return webClient.get()
                 .uri(uriBuilder -> {
-                    var builder = uriBuilder.path("/analytics/forecast");
-                    if (destination != null) {
+                    var builder = uriBuilder.path("/analytics/forecast")
+                            .queryParam("horizon_months", 6);  // Прогноз на 6 месяцев
+                    if (destination != null && !destination.isEmpty()) {
                         builder.queryParam("destination", destination);
                     }
                     return builder.build();
                 })
                 .retrieve()
                 .bodyToMono(JsonNode.class)
-                .timeout(Duration.ofSeconds(15))
+                .timeout(Duration.ofSeconds(30))
+                .onErrorResume(e -> Mono.empty());
+    }
+
+    /**
+     * Получить прогноз спроса в табличном формате
+     */
+    public Mono<JsonNode> getDemandForecastTable() {
+        return webClient.get()
+                .uri("/analytics/forecast/table")
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(30))
+                .doOnError(e -> org.slf4j.LoggerFactory.getLogger(MlServiceClient.class)
+                        .error("Error getting demand forecast table: {}", e.getMessage()))
+                .onErrorResume(e -> {
+                    org.slf4j.LoggerFactory.getLogger(MlServiceClient.class)
+                            .warn("ML service returned error for forecast table, returning empty");
+                    return Mono.empty();
+                });
+    }
+
+    /**
+     * Получить все направления из базы данных
+     */
+    public Mono<JsonNode> getAllDestinations() {
+        return webClient.get()
+                .uri("/analytics/all-destinations")
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(30))
                 .onErrorResume(e -> Mono.empty());
     }
 
@@ -168,5 +212,80 @@ public class MlServiceClient {
                 .bodyToMono(Void.class)
                 .timeout(Duration.ofSeconds(5))
                 .onErrorResume(e -> Mono.empty());
+    }
+
+    /**
+     * Получить кластеры туров
+     */
+    public Mono<JsonNode> getTourClusters(int nClusters) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/analytics/clusters")
+                        .queryParam("n_clusters", nClusters)
+                        .build())
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(15))
+                .onErrorResume(e -> Mono.empty());
+    }
+
+    /**
+     * Получить метрики моделей
+     */
+    public Mono<JsonNode> getModelMetrics() {
+        return webClient.get()
+                .uri("/analytics/model-metrics")
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(15))
+                .onErrorResume(e -> Mono.empty());
+    }
+
+    /**
+     * Получить аномальные туры
+     */
+    public Mono<JsonNode> getAnomalousTours() {
+        return webClient.get()
+                .uri("/analytics/anomalies")
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(15))
+                .onErrorResume(e -> Mono.empty());
+    }
+
+    /**
+     * Получить сезонные тренды
+     */
+    public Mono<JsonNode> getSeasonalTrends(int months) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/analytics/trends")
+                        .queryParam("months", months)
+                        .build())
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(15))
+                .onErrorResume(e -> Mono.empty());
+    }
+
+    /**
+     * Получить прогноз сезонных трендов на N месяцев вперед
+     */
+    public Mono<JsonNode> getSeasonalForecast(int forecastMonths) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/analytics/forecast/seasonal")
+                        .queryParam("forecast_months", forecastMonths)
+                        .build())
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(30))
+                .doOnError(e -> org.slf4j.LoggerFactory.getLogger(MlServiceClient.class)
+                        .error("Error getting seasonal forecast: {}", e.getMessage()))
+                .onErrorResume(e -> {
+                    org.slf4j.LoggerFactory.getLogger(MlServiceClient.class)
+                            .warn("ML service returned error for seasonal forecast, returning empty");
+                    return Mono.empty();
+                });
     }
 }

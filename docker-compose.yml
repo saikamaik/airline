@@ -1,0 +1,128 @@
+services:
+  # PostgreSQL база данных
+  airline-database:
+    image: postgres:15-alpine
+    container_name: airline-database
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER:-dbuser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dbpassword}
+      POSTGRES_DB: ${DB_NAME:-jcourse}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./airline/docker/dumps:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-dbuser}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - airline-network
+
+  # Backend (Java Spring Boot)
+  airline-backend:
+    build:
+      context: ./airline
+      dockerfile: Dockerfile
+    container_name: airline-backend
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    environment:
+      # База данных
+      SPRING_DATASOURCE_URL: jdbc:postgresql://airline-database:5432/${DB_NAME:-jcourse}?stringtype=unspecified&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-dbuser}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-dbpassword}
+      
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-YourVerySecretKeyThatShouldBeAtLeast256BitsLongForHS256Algorithm}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      
+      # ML Service
+      ML_SERVICE_URL: http://ml-service:8000
+      
+      # Email (опционально)
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      
+      # Demo data
+      APP_DEMO_DATA_ENABLED: "true"
+      
+      # SQL logging (отключено для продакшена)
+      SPRING_JPA_SHOW_SQL: ${SPRING_JPA_SHOW_SQL:-false}
+      SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: ${SPRING_JPA_FORMAT_SQL:-false}
+      
+      # Spring Boot автоматически конвертирует APP_DEMO_DATA_ENABLED в app.demo-data.enabled
+    depends_on:
+      airline-database:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+    networks:
+      - airline-network
+
+  # ML Service (Python FastAPI)
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: ml-service
+    ports:
+      - "${ML_SERVICE_PORT:-8000}:8000"
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-dbuser}:${DB_PASSWORD:-dbpassword}@airline-database:5432/${DB_NAME:-jcourse}
+      BACKEND_URL: http://airline-backend:8080
+      DEBUG: ${ML_DEBUG:-false}
+    depends_on:
+      airline-database:
+        condition: service_healthy
+      airline-backend:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - airline-network
+
+  # Swagger UI (опционально)
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    container_name: swagger-ui
+    ports:
+      - "${SWAGGER_PORT:-8081}:8080"
+    volumes:
+      - ./airline/docker/open-api:/app
+    environment:
+      SWAGGER_JSON: /app/openapi.yaml
+    depends_on:
+      - airline-backend
+    networks:
+      - airline-network
+
+  # pgAdmin (опционально, для управления БД)
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+    depends_on:
+      - airline-database
+    networks:
+      - airline-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  airline-network:
+    driver: bridge
