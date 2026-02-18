@@ -105,14 +105,10 @@ public class FavoritesController {
             
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
-            logger.error("Ошибка проверки избранного: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
     
-    /**
-     * Получить количество избранных туров
-     */
     @GetMapping("/count")
     public ResponseEntity<Map<String, Long>> getFavoritesCount(Authentication authentication) {
         try {
@@ -124,7 +120,6 @@ public class FavoritesController {
             
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
-            logger.error("Ошибка получения количества избранных: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
