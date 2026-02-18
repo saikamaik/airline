@@ -34,7 +34,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Пропускаем публичные эндпоинты
         if (path.startsWith("/auth/") || 
             path.startsWith("/swagger-ui") || 
-            path.startsWith("/v3/api-docs")) {
+            path.equals("/swagger-ui.html") ||
+            path.startsWith("/v3/api-docs") ||
+            path.equals("/v3/api-docs") ||
+            path.startsWith("/swagger-resources") ||
+            path.startsWith("/webjars/")) {
+            logger.debug("JwtAuthenticationFilter: Skipping filter for public path: {}", path);
             return true;
         }
         logger.info("JwtAuthenticationFilter: shouldNotFilter check for path: {} - will filter", path);
