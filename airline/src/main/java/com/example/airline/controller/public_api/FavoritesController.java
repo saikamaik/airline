@@ -7,8 +7,6 @@ import com.example.airline.entity.user.User;
 import com.example.airline.repository.client.ClientRepository;
 import com.example.airline.repository.user.UserRepository;
 import com.example.airline.service.favorite.FavoriteTourService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,14 +20,9 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Контроллер для работы с избранными турами клиентов
- */
 @RestController
 @RequestMapping("/favorites")
 public class FavoritesController {
-    
-    private static final Logger logger = LoggerFactory.getLogger(FavoritesController.class);
     
     private final FavoriteTourService favoriteTourService;
     private final ClientRepository clientRepository;
@@ -44,9 +37,6 @@ public class FavoritesController {
         this.userRepository = userRepository;
     }
     
-    /**
-     * Получить ID клиента по аутентификации
-     */
     private Long getClientIdFromAuth(Authentication authentication) {
         String username = ((UserDetails) authentication.getPrincipal()).getUsername();
         User user = userRepository.findByUsername(username)
@@ -58,9 +48,6 @@ public class FavoritesController {
         return client.getId();
     }
     
-    /**
-     * Получить все избранные туры текущего клиента
-     */
     @GetMapping
     public ResponseEntity<Page<FavoriteTourDto>> getFavorites(
             @RequestParam(defaultValue = "0") int page,
@@ -70,18 +57,12 @@ public class FavoritesController {
             Long clientId = getClientIdFromAuth(authentication);
             Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
             Page<FavoriteTourDto> favorites = favoriteTourService.getFavorites(clientId, pageable);
-            
-            logger.info("Возвращено {} избранных туров для клиента {}", favorites.getContent().size(), clientId);
             return ResponseEntity.ok(favorites);
         } catch (IllegalArgumentException e) {
-            logger.error("Ошибка получения избранных туров: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }
     
-    /**
-     * Добавить тур в избранное
-     */
     @PostMapping
     public ResponseEntity<FavoriteTourDto> addToFavorites(
             @RequestBody AddToFavoritesRequest request,
@@ -89,18 +70,12 @@ public class FavoritesController {
         try {
             Long clientId = getClientIdFromAuth(authentication);
             FavoriteTourDto favorite = favoriteTourService.addToFavorites(clientId, request.getTourId());
-            
-            logger.info("Тур {} добавлен в избранное клиента {}", request.getTourId(), clientId);
             return ResponseEntity.status(HttpStatus.CREATED).body(favorite);
         } catch (IllegalArgumentException e) {
-            logger.error("Ошибка добавления в избранное: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
     }
     
-    /**
-     * Удалить тур из избранного
-     */
     @DeleteMapping("/{tourId}")
     public ResponseEntity<Void> removeFromFavorites(
             @PathVariable Long tourId,
@@ -108,11 +83,8 @@ public class FavoritesController {
         try {
             Long clientId = getClientIdFromAuth(authentication);
             favoriteTourService.removeFromFavorites(clientId, tourId);
-            
-            logger.info("Тур {} удален из избранного клиента {}", tourId, clientId);
             return ResponseEntity.noContent().build();
         } catch (IllegalArgumentException e) {
-            logger.error("Ошибка удаления из избранного: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
     }

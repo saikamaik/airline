@@ -24,78 +24,52 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
     private final com.example.airline.security.JwtUtil jwtUtil;
-
-    private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(SecurityConfig.class);
     
     public SecurityConfig(CustomUserDetailsService userDetailsService, 
                          com.example.airline.security.JwtUtil jwtUtil) {
         this.userDetailsService = userDetailsService;
         this.jwtUtil = jwtUtil;
-        logger.info("SecurityConfig: JwtUtil injected: {}", jwtUtil != null);
     }
     
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter() {
-        logger.info("SecurityConfig: Creating JwtAuthenticationFilter bean");
-        JwtAuthenticationFilter filter = new JwtAuthenticationFilter(jwtUtil, userDetailsService);
-        logger.info("SecurityConfig: JwtAuthenticationFilter bean created");
-        return filter;
+        return new JwtAuthenticationFilter(jwtUtil, userDetailsService);
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        logger.info("SecurityConfig: filterChain method called");
         JwtAuthenticationFilter jwtFilter = jwtAuthenticationFilter();
-        logger.info("SecurityConfig: JWT filter obtained: {}", jwtFilter != null);
         
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(request -> {
                     var corsConfig = new org.springframework.web.cors.CorsConfiguration();
-                    String origin = request.getHeader("Origin");
-                    logger.info("CORS request from origin: {}", origin);
-                    
-                    // Разрешаем все localhost порты для разработки через паттерн
-                    // 10.0.2.2 - это специальный адрес Android эмулятора для доступа к localhost хоста
-                    // Разрешаем все домены Vercel для продакшена
-                    // Паттерны поддерживают wildcards: * для любого поддомена
-                    // Используем более широкий паттерн для покрытия всех вариантов доменов Vercel:
-                    // - production: airline-black.vercel.app
-                    // - preview: airline-pixk86c3q-saikamaiks-projects.vercel.app
-                    // - branch: airline-git-branch-name.vercel.app
-                    java.util.List<String> allowedPatterns = java.util.List.of(
+                    corsConfig.setAllowedOriginPatterns(java.util.List.of(
                         "http://localhost:*",
                         "http://10.0.2.2:*",
                         "https://*.vercel.app",
-                        "https://*--*.vercel.app"  // Для preview доменов с дефисами
-                    );
-                    corsConfig.setAllowedOriginPatterns(allowedPatterns);
-                    logger.info("CORS allowed patterns: {}", allowedPatterns);
-                    
+                        "https://*--*.vercel.app",
+                        "https://*.railway.app",
+                        "https://*.up.railway.app"
+                    ));
                     corsConfig.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
                     corsConfig.setAllowedHeaders(java.util.List.of("*"));
                     corsConfig.setAllowCredentials(true);
                     corsConfig.setMaxAge(3600L);
+                    corsConfig.setExposedHeaders(java.util.List.of("*"));
                     return corsConfig;
                 }))
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints (доступны без авторизации)
-                        .requestMatchers("/", "/health", "/actuator/health").permitAll()  // Health check для Railway
+                        .requestMatchers("/", "/health", "/actuator/health").permitAll()
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**").permitAll()
-                        // Просмотр туров и рейсов - публичный
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/tours/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/flights/**").permitAll()
-                        // Создание заявки - только для авторизованных пользователей
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/tours/*/request").authenticated()
-                        // Избранные туры - только для авторизованных клиентов
                         .requestMatchers("/favorites/**").authenticated()
                         .requestMatchers("/client/requests").authenticated()
-                        // Admin endpoints
                         .requestMatchers("/admin/**").hasRole("ADMIN")
-                        // Employee endpoints
                         .requestMatchers("/employee/**").hasAnyRole("EMPLOYEE", "ADMIN")
-                        // Boarding requires authentication
                         .requestMatchers("/boardings/**").authenticated()
                         .anyRequest().authenticated()
                 )
@@ -106,21 +80,16 @@ public class SecurityConfig {
                 .addFilterBefore(jwtFilter, org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling(exception -> exception
                         .authenticationEntryPoint((request, response, authException) -> {
-                            logger.warn("AuthenticationEntryPoint: {} - {}", request.getRequestURI(), authException.getMessage());
                             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                             response.setContentType("application/json");
                             response.getWriter().write("{\"error\":\"Unauthorized: " + authException.getMessage() + "\"}");
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
-                            logger.warn("AccessDeniedHandler: {} - {}", request.getRequestURI(), accessDeniedException.getMessage());
-                            logger.warn("Current authentication: {}", org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication());
                             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                             response.setContentType("application/json");
                             response.getWriter().write("{\"error\":\"Forbidden: " + accessDeniedException.getMessage() + "\"}");
                         })
                 );
-        
-        logger.info("SecurityConfig: Filter chain configured, JWT filter added before AuthorizationFilter");
         
         return http.build();
     }

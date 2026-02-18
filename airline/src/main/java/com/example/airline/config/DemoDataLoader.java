@@ -70,27 +70,20 @@ public class DemoDataLoader implements CommandLineRunner {
     @Override
     public void run(String... args) {
         if (!demoDataEnabled) {
-            logger.info("=== DemoDataLoader: Отключен через настройки ===");
             return;
         }
         
-        logger.info("=== DemoDataLoader: Проверка данных ===");
         boolean dataExists = flightRepository.count() > 0;
-        
-        // Всегда обновляем пароли пользователей, даже если данные уже есть
         updateDemoUsers();
         
-        // Всегда создаем/обновляем демо-туры, даже если данные уже есть
         if (dataExists) {
-            logger.info("=== DemoDataLoader: Данные уже существуют, обновление туров ===");
             try {
                 updateDemoTours();
             } catch (Exception e) {
-                logger.info("=== DemoDataLoader: Ошибка при обновлении туров (возможно, таблица еще не создана): " + e.getMessage());
+                logger.warn("Failed to update demo tours: {}", e.getMessage());
             }
             return;
         }
-        logger.info("=== DemoDataLoader: Начало загрузки демо-данных ===");
 
         Airport svo = new Airport(
                 "SVO",
@@ -112,7 +105,6 @@ public class DemoDataLoader implements CommandLineRunner {
         );
 
         airportRepository.saveAll(List.of(svo, led, hkt));
-        logger.info("=== DemoDataLoader: Аэропорты созданы ===");
 
         Aircraft airbus320 = new Aircraft("320",
                 new Model("Airbus A320", "Airbus A320"),
@@ -122,9 +114,6 @@ public class DemoDataLoader implements CommandLineRunner {
                 13650);
 
         aircraftRepository.saveAll(List.of(airbus320, boeing777));
-        logger.info("=== DemoDataLoader: Самолёты созданы ===");
-
-        logger.info("=== DemoDataLoader: Самолеты созданы ===");
 
         Flight moscowToSpb = new Flight.Builder()
                 .flightNumber("SU123")
@@ -147,9 +136,6 @@ public class DemoDataLoader implements CommandLineRunner {
                 .build();
 
         flightRepository.saveAll(List.of(moscowToSpb, moscowToPhuket));
-        logger.info("=== DemoDataLoader: Рейсы созданы ===");
-
-        // Create demo tours
         Tour phuketTour = new Tour(
                 "Пляжный отдых на Пхукете",
                 "Незабываемый отпуск на тропическом острове Пхукет с посещением лучших пляжей, " +
@@ -177,34 +163,21 @@ public class DemoDataLoader implements CommandLineRunner {
         spbTour.setFlights(spbFlights);
 
         tourRepository.saveAll(List.of(phuketTour, spbTour));
-        logger.info("=== DemoDataLoader: Туры созданы ===");
 
-        // Create roles if they don't exist
-        logger.info("=== DemoDataLoader: Создание ролей ===");
-        Role roleUser = roleRepository.findByName(RoleName.ROLE_USER)
+        roleRepository.findByName(RoleName.ROLE_USER)
                 .orElseGet(() -> roleRepository.save(new Role(RoleName.ROLE_USER)));
-        Role roleAdmin = roleRepository.findByName(RoleName.ROLE_ADMIN)
+        roleRepository.findByName(RoleName.ROLE_ADMIN)
                 .orElseGet(() -> roleRepository.save(new Role(RoleName.ROLE_ADMIN)));
-        logger.info("=== DemoDataLoader: Роли созданы ===");
 
-        // Update demo users
         updateDemoUsers();
-        logger.info("=== DemoDataLoader: Загрузка завершена! ===");
     }
 
     private void updateDemoTours() {
-        logger.info("=== DemoDataLoader: Обновление демо-туров ===");
-        
-        // Проверяем, что таблица туров существует
         try {
-            long tourCount = tourRepository.count();
-            logger.info("=== DemoDataLoader: В базе найдено туров: " + tourCount);
+            tourRepository.count();
         } catch (Exception e) {
-            logger.info("=== DemoDataLoader: Таблица tours еще не создана, пропуск обновления туров");
             return;
         }
-        
-        // Находим рейсы для туров
         List<Flight> allFlights = flightRepository.findAll();
         Flight moscowToPhuket = allFlights.stream()
                 .filter(f -> f.getArrivalAirport() != null && "HKT".equals(f.getArrivalAirport().getAirportCode()))
@@ -246,9 +219,6 @@ public class DemoDataLoader implements CommandLineRunner {
             phuketTour.setFlights(phuketFlights);
         }
         tourRepository.save(phuketTour);
-        logger.info("=== DemoDataLoader: Тур на Пхукет обновлён ===");
-
-        // Создаем или обновляем тур в Санкт-Петербург
         Tour spbTour = tourRepository.findByDestinationCity("Санкт-Петербург")
                 .stream()
                 .findFirst()
@@ -279,57 +249,41 @@ public class DemoDataLoader implements CommandLineRunner {
             spbTour.setFlights(spbFlights);
         }
         tourRepository.save(spbTour);
-        logger.info("=== DemoDataLoader: Тур в Санкт-Петербург обновлён ===");
     }
 
     private void updateDemoUsers() {
-        logger.info("=== DemoDataLoader: Обновление демо-пользователей ===");
-        
-        // Create roles if they don't exist
         Role roleUser = roleRepository.findByName(RoleName.ROLE_USER)
                 .orElseGet(() -> roleRepository.save(new Role(RoleName.ROLE_USER)));
         Role roleAdmin = roleRepository.findByName(RoleName.ROLE_ADMIN)
                 .orElseGet(() -> roleRepository.save(new Role(RoleName.ROLE_ADMIN)));
 
-        // Create or update demo users
         User user = userRepository.findByUsername("user").orElse(null);
         if (user == null) {
             user = new User("user", passwordEncoder.encode("password123"), "user@example.com");
             user.getRoles().add(roleUser);
-            userRepository.save(user);
-            logger.info("=== DemoDataLoader: Пользователь 'user' создан ===");
         } else {
-            // Обновляем пароль на случай, если он был изменен
-            String newPassword = passwordEncoder.encode("password123");
-            user.setPassword(newPassword);
+            user.setPassword(passwordEncoder.encode("password123"));
             if (!user.getRoles().contains(roleUser)) {
                 user.getRoles().add(roleUser);
             }
-            userRepository.save(user);
-            logger.info("=== DemoDataLoader: Пользователь 'user' обновлён (пароль сброшен на password123) ===");
         }
+        userRepository.save(user);
 
         User admin = userRepository.findByUsername("admin").orElse(null);
         if (admin == null) {
             admin = new User("admin", passwordEncoder.encode("password123"), "admin@example.com");
             admin.getRoles().add(roleUser);
             admin.getRoles().add(roleAdmin);
-            userRepository.save(admin);
-            logger.info("=== DemoDataLoader: Пользователь 'admin' создан ===");
         } else {
-            // Обновляем пароль на случай, если он был изменен
-            String newPassword = passwordEncoder.encode("password123");
-            admin.setPassword(newPassword);
+            admin.setPassword(passwordEncoder.encode("password123"));
             if (!admin.getRoles().contains(roleUser)) {
                 admin.getRoles().add(roleUser);
             }
             if (!admin.getRoles().contains(roleAdmin)) {
                 admin.getRoles().add(roleAdmin);
             }
-            userRepository.save(admin);
-            logger.info("=== DemoDataLoader: Пользователь 'admin' обновлён (пароль сброшен на password123) ===");
         }
-        logger.info("=== DemoDataLoader: Пользователи обновлены ===");
+        userRepository.save(admin);
     }
 
 }
