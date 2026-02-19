@@ -41,12 +41,29 @@ public class ClientService {
     
     @Transactional(readOnly = true)
     public Page<ClientDto> searchClients(String search, Boolean vipStatus, Pageable pageable) {
-        return clientRepository.searchClients(search, vipStatus, pageable)
-                .map(client -> {
-                    ClientDto dto = ClientMapper.toDto(client);
-                    dto.setTotalRequests(requestRepository.countByClientId(client.getId()));
-                    return dto;
-                });
+        boolean hasSearch = search != null && !search.isBlank();
+        boolean hasVip = vipStatus != null;
+
+        Page<Client> clients;
+        if (hasSearch && hasVip) {
+            // Оба фильтра — используем запрос с текстом и vipStatus (без null-параметров)
+            clients = clientRepository.searchByTextAndVip(search.trim(), vipStatus, pageable);
+        } else if (hasSearch) {
+            // Только текстовый поиск
+            clients = clientRepository.searchByText(search.trim(), pageable);
+        } else if (hasVip) {
+            // Только фильтр по VIP
+            clients = clientRepository.findByVipStatus(vipStatus, pageable);
+        } else {
+            // Без фильтров — возвращаем всё
+            clients = clientRepository.findAll(pageable);
+        }
+
+        return clients.map(client -> {
+            ClientDto dto = ClientMapper.toDto(client);
+            dto.setTotalRequests(requestRepository.countByClientId(client.getId()));
+            return dto;
+        });
     }
     
     @Transactional(readOnly = true)

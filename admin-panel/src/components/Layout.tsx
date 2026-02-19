@@ -24,6 +24,7 @@ import {
   Analytics,
   People,
   Person,
+  PersonSearch,
 } from '@mui/icons-material';
 import { authApi } from '../api/auth';
 
@@ -36,6 +37,7 @@ const adminMenuItems = [
   { text: 'Рейсы', icon: <FlightTakeoff />, path: '/flights' },
   { text: 'Заявки', icon: <Mail />, path: '/requests' },
   { text: 'Сотрудники', icon: <People />, path: '/employees' },
+  { text: 'Клиенты', icon: <PersonSearch />, path: '/clients' },
 ];
 
 const employeeMenuItems = [
