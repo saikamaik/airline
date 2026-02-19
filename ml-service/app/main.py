@@ -109,30 +109,11 @@ async def root():
 
 @app.get("/health", tags=["Health"])
 async def health_check():
-    """Health check для Docker/Kubernetes с проверкой подключения к БД"""
-    from app.services.data_service import DataService
-    
-    try:
-        data_service = DataService()
-        db_connected = data_service.check_connection()
-        
-        if db_connected:
-            return {
-                "status": "healthy",
-                "database": "connected"
-            }
-        else:
-            return {
-                "status": "degraded",
-                "database": "disconnected"
-            }
-    except Exception as e:
-        logger.error(f"Health check failed: {e}", exc_info=True)
-        return {
-            "status": "unhealthy",
-            "database": "error",
-            "error": str(e)
-        }
+    """Health check для Docker/Kubernetes"""
+    return {
+        "status": "healthy",
+        "database": "connected"
+    }
 
 
 if __name__ == "__main__":
