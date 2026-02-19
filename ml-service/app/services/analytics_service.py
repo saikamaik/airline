@@ -40,6 +40,7 @@ class AnalyticsService:
         self.data_service = DataService()
         self.settings = get_settings()
         self._forecast_models_cache: Dict[str, LinearRegression] = {}
+        self._ensemble_models_cache: Dict[str, tuple] = {}
         self._forecast_cache_path = os.path.join(self.settings.model_path, "forecast_models")
         
         # Создаем директорию для моделей если её нет
@@ -639,6 +640,9 @@ class AnalyticsService:
         y: np.ndarray
     ) -> tuple:
         """Обучить ансамбль моделей и вернуть метрики"""
+        if destination in self._ensemble_models_cache:
+            return self._ensemble_models_cache[destination]
+
         from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
         from sklearn.preprocessing import MinMaxScaler
         x_scaler = MinMaxScaler()
@@ -650,7 +654,8 @@ class AnalyticsService:
         mlp = MLPRegressor(
             hidden_layer_sizes=(64, 32),
             activation='relu',
-            max_iter=1000,
+            solver='lbfgs',
+            max_iter=500,
             random_state=42,
             tol=1e-4
         )
@@ -723,7 +728,9 @@ class AnalyticsService:
                     w_mlp * mlp.predict(X_in_scaled)
                 )
 
-        return EnsembleModel(), metrics
+        result = EnsembleModel(), metrics
+        self._ensemble_models_cache[destination] = result
+        return result
     
     def _load_cached_forecast_models(self):
         """Загрузить все кэшированные модели прогноза при старте"""
