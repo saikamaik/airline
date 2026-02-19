@@ -28,6 +28,7 @@ import {
   Tab,
   IconButton,
   Alert,
+  Snackbar,
 } from '@mui/material';
 import {
   TrendingUp,
@@ -36,6 +37,7 @@ import {
   CheckCircle,
   Visibility,
   Close,
+  Add,
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -44,6 +46,7 @@ import { ru } from 'date-fns/locale';
 import { employeeApi } from '../api/employeeApi';
 import { EmployeeDto, EmployeeSalesDto } from '../api/employees';
 import { ClientRequestDto } from '../types';
+import CreateRequestDialog, { TourOption, NewRequestFormData } from '../components/CreateRequestDialog';
 
 const statusLabels: Record<string, string> = {
   NEW: 'Новая',
@@ -77,10 +80,17 @@ export default function EmployeeDashboard() {
   const [comments, setComments] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [availableTours, setAvailableTours] = useState<TourOption[]>([]);
+  const [toursLoading, setToursLoading] = useState(false);
 
   useEffect(() => {
     loadData();
   }, [page, statusFilter, tabValue]);
+
+  useEffect(() => {
+    loadTours();
+  }, []);
 
   useEffect(() => {
     if (startDate && endDate) {
@@ -131,6 +141,32 @@ export default function EmployeeDashboard() {
       console.error('Error loading all requests:', error);
       setError('Ошибка при загрузке данных');
     }
+  };
+
+  const loadTours = async () => {
+    setToursLoading(true);
+    try {
+      const tours = await employeeApi.getActiveTours();
+      setAvailableTours(tours);
+    } catch (err) {
+      console.error('Error loading tours:', err);
+    } finally {
+      setToursLoading(false);
+    }
+  };
+
+  const handleCreateRequest = async (formData: NewRequestFormData) => {
+    await employeeApi.createRequest({
+      tourId: formData.tourId,
+      userName: formData.userName,
+      userEmail: formData.userEmail,
+      userPhone: formData.userPhone || undefined,
+      priority: formData.priority,
+      comment: formData.comment || undefined,
+    });
+    setCreateDialogOpen(false);
+    setSuccess('Заявка успешно создана');
+    await loadAllRequests();
   };
 
   const loadSales = async () => {
@@ -219,9 +255,18 @@ export default function EmployeeDashboard() {
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ru}>
       <Box>
-        <Typography variant="h4" gutterBottom>
-          Панель сотрудника
-        </Typography>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+          <Typography variant="h4">
+            Панель сотрудника
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => setCreateDialogOpen(true)}
+          >
+            Создать заявку
+          </Button>
+        </Stack>
 
         {/* Сообщения об ошибках и успехе */}
         {error && (
@@ -465,6 +510,18 @@ export default function EmployeeDashboard() {
             </Table>
           </TableContainer>
         </Paper>
+
+        {/* Диалог создания новой заявки */}
+        <CreateRequestDialog
+          open={createDialogOpen}
+          onClose={() => setCreateDialogOpen(false)}
+          onSuccess={(message) => setSuccess(message)}
+          tours={availableTours}
+          toursLoading={toursLoading}
+          onSubmit={handleCreateRequest}
+          showPriority={false}
+          title="Создать заявку вручную"
+        />
 
         {/* Диалог для работы с заявкой */}
         <Dialog

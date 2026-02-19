@@ -37,6 +37,18 @@ export const requestsApi = {
     return response.data;
   },
 
+  create: async (data: {
+    tourId: number;
+    userName: string;
+    userEmail: string;
+    userPhone?: string;
+    priority?: string;
+    comment?: string;
+  }): Promise<ClientRequestDto> => {
+    const response = await apiClient.post<ClientRequestDto>('/admin/requests', data);
+    return response.data;
+  },
+
   getByTour: async (tourId: number, page = 0, size = 20): Promise<Page<ClientRequestDto>> => {
     const response = await apiClient.get<Page<ClientRequestDto>>(
       `/admin/requests/tour/${tourId}`,

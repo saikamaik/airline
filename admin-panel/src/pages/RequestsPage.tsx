@@ -17,15 +17,20 @@ import {
   TablePagination,
   Stack,
   Button,
+  Snackbar,
+  Alert,
 } from '@mui/material';
+import { Add } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { ru } from 'date-fns/locale';
 import { requestsApi } from '../api/requests';
 import { employeesApi } from '../api/employees';
-import { ClientRequestDto } from '../types';
+import { toursApi } from '../api/tours';
+import { ClientRequestDto, TourDto } from '../types';
 import { EmployeeDto } from '../api/employees';
+import CreateRequestDialog, { TourOption } from '../components/CreateRequestDialog';
 
 const statusLabels: Record<string, string> = {
   NEW: 'Новая',
@@ -56,6 +61,8 @@ const priorityColors: Record<string, 'default' | 'warning' | 'error'> = {
 export default function RequestsPage() {
   const [requests, setRequests] = useState<ClientRequestDto[]>([]);
   const [employees, setEmployees] = useState<EmployeeDto[]>([]);
+  const [tours, setTours] = useState<TourOption[]>([]);
+  const [toursLoading, setToursLoading] = useState(false);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [totalElements, setTotalElements] = useState(0);
@@ -64,10 +71,17 @@ export default function RequestsPage() {
   const [filterPriority, setFilterPriority] = useState<string>('');
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
 
   useEffect(() => {
     loadRequests();
     loadEmployees();
+    loadTours();
   }, [page, rowsPerPage]);
 
   const loadEmployees = async () => {
@@ -77,6 +91,38 @@ export default function RequestsPage() {
     } catch (error) {
       console.error('Error loading employees:', error);
     }
+  };
+
+  const loadTours = async () => {
+    setToursLoading(true);
+    try {
+      const data = await toursApi.getAll(0, 1000);
+      setTours(
+        data.content.map((t: TourDto) => ({
+          id: t.id!,
+          name: t.name,
+          price: t.price,
+          destinationCity: t.destinationCity,
+        }))
+      );
+    } catch (error) {
+      console.error('Error loading tours:', error);
+    } finally {
+      setToursLoading(false);
+    }
+  };
+
+  const handleCreateRequest = async (formData: import('../components/CreateRequestDialog').NewRequestFormData) => {
+    await requestsApi.create({
+      tourId: formData.tourId,
+      userName: formData.userName,
+      userEmail: formData.userEmail,
+      userPhone: formData.userPhone || undefined,
+      priority: formData.priority,
+      comment: formData.comment || undefined,
+    });
+    setCreateDialogOpen(false);
+    loadRequests();
   };
 
   const loadRequests = async () => {
@@ -141,9 +187,18 @@ export default function RequestsPage() {
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ru}>
       <Box>
-        <Typography variant="h4" gutterBottom>
-          Заявки клиентов
-        </Typography>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+          <Typography variant="h4">
+            Заявки клиентов
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => setCreateDialogOpen(true)}
+          >
+            Создать заявку
+          </Button>
+        </Stack>
 
         <Paper sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle1" gutterBottom>
@@ -315,6 +370,31 @@ export default function RequestsPage() {
           labelRowsPerPage="Строк на странице:"
         />
         </TableContainer>
+        {/* Диалог создания заявки */}
+        <CreateRequestDialog
+          open={createDialogOpen}
+          onClose={() => setCreateDialogOpen(false)}
+          onSuccess={(message) => setSnackbar({ open: true, message, severity: 'success' })}
+          tours={tours}
+          toursLoading={toursLoading}
+          onSubmit={handleCreateRequest}
+          showPriority
+          title="Создать заявку (от имени клиента)"
+        />
+
+        {/* Уведомления */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={4000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+        >
+          <Alert
+            severity={snackbar.severity}
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </LocalizationProvider>
   );

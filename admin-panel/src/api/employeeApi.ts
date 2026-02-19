@@ -56,6 +56,23 @@ export const employeeApi = {
     return response.data;
   },
 
+  createRequest: async (data: {
+    tourId: number;
+    userName: string;
+    userEmail: string;
+    userPhone?: string;
+    priority?: string;
+    comment?: string;
+  }): Promise<ClientRequestDto> => {
+    const response = await apiClient.post<ClientRequestDto>('/employee/requests', data);
+    return response.data;
+  },
+
+  getActiveTours: async (): Promise<Array<{ id: number; name: string; price: number; destinationCity: string }>> => {
+    const response = await apiClient.get('/tours', { params: { page: 0, size: 200 } });
+    return response.data.content ?? [];
+  },
+
   getMySales: async (startDate?: string, endDate?: string): Promise<EmployeeSalesDto> => {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);

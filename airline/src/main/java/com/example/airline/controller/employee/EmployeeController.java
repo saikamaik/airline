@@ -6,11 +6,13 @@ import com.example.airline.dto.request.ClientRequestDto;
 import com.example.airline.entity.tour.RequestStatus;
 import com.example.airline.service.employee.EmployeeService;
 import com.example.airline.service.request.ClientRequestService;
+import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -47,6 +49,19 @@ public class EmployeeController {
                 .orElse(ResponseEntity.notFound().build());
     }
     
+    @PostMapping("/requests")
+    public ResponseEntity<ClientRequestDto> createRequest(
+            @Valid @RequestBody ClientRequestDto dto) {
+        try {
+            ClientRequestDto created = requestService.createRequest(dto);
+            return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @GetMapping("/requests")
     public ResponseEntity<Page<ClientRequestDto>> getMyRequests(
             Authentication authentication,
