@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, IsolationForest
+from sklearn.neural_network import MLPRegressor
 from sklearn.cluster import KMeans
 import joblib
 from app.schemas.analytics import (
@@ -639,73 +640,92 @@ class AnalyticsService:
     ) -> tuple:
         """Обучить ансамбль моделей и вернуть метрики"""
         from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+        from sklearn.preprocessing import MinMaxScaler
+        x_scaler = MinMaxScaler()
+        X_scaled = x_scaler.fit_transform(X)
         
-        # Обучаем три модели
         lr = LinearRegression()
         rf = RandomForestRegressor(n_estimators=50, random_state=42, max_depth=5)
         gb = GradientBoostingRegressor(n_estimators=50, random_state=42, max_depth=3)
+        mlp = MLPRegressor(
+            hidden_layer_sizes=(64, 32),
+            activation='relu',
+            max_iter=1000,
+            random_state=42,
+            early_stopping=True,
+            validation_fraction=0.1 if len(X) >= 10 else 0.0,
+            n_iter_no_change=20,
+            tol=1e-4
+        )
         
         lr.fit(X, y)
         rf.fit(X, y)
         gb.fit(X, y)
+        mlp.fit(X_scaled, y)
         
-        # Предсказания
-        y_pred_lr = lr.predict(X)
-        y_pred_rf = rf.predict(X)
-        y_pred_gb = gb.predict(X)
-        
-        # Метрики для каждой модели
-        r2_lr = r2_score(y, y_pred_lr)
-        r2_rf = r2_score(y, y_pred_rf)
-        r2_gb = r2_score(y, y_pred_gb)
-        
-        mae_lr = mean_absolute_error(y, y_pred_lr)
-        mae_rf = mean_absolute_error(y, y_pred_rf)
-        mae_gb = mean_absolute_error(y, y_pred_gb)
-        
-        rmse_lr = np.sqrt(mean_squared_error(y, y_pred_lr))
-        rmse_rf = np.sqrt(mean_squared_error(y, y_pred_rf))
-        rmse_gb = np.sqrt(mean_squared_error(y, y_pred_gb))
-        
-        # Взвешенное среднее предсказаний (веса по R²)
-        total_r2 = r2_lr + r2_rf + r2_gb
+        y_pred_lr  = lr.predict(X)
+        y_pred_rf  = rf.predict(X)
+        y_pred_gb  = gb.predict(X)
+        y_pred_mlp = mlp.predict(X_scaled)
+
+        r2_lr  = max(0.0, r2_score(y, y_pred_lr))
+        r2_rf  = max(0.0, r2_score(y, y_pred_rf))
+        r2_gb  = max(0.0, r2_score(y, y_pred_gb))
+        r2_mlp = max(0.0, r2_score(y, y_pred_mlp))
+
+        total_r2 = r2_lr + r2_rf + r2_gb + r2_mlp
         if total_r2 > 0:
-            w_lr = r2_lr / total_r2
-            w_rf = r2_rf / total_r2
-            w_gb = r2_gb / total_r2
+            w_lr  = r2_lr  / total_r2
+            w_rf  = r2_rf  / total_r2
+            w_gb  = r2_gb  / total_r2
+            w_mlp = r2_mlp / total_r2
         else:
-            w_lr = w_rf = w_gb = 1.0 / 3.0
-        
-        y_pred_ensemble = w_lr * y_pred_lr + w_rf * y_pred_rf + w_gb * y_pred_gb
-        
-        # Метрики ансамбля
-        r2_ensemble = r2_score(y, y_pred_ensemble)
-        mae_ensemble = mean_absolute_error(y, y_pred_ensemble)
+            w_lr = w_rf = w_gb = w_mlp = 0.25
+
+        y_pred_ensemble = (
+            w_lr  * y_pred_lr  +
+            w_rf  * y_pred_rf  +
+            w_gb  * y_pred_gb  +
+            w_mlp * y_pred_mlp
+        )
+
+        r2_ensemble   = r2_score(y, y_pred_ensemble)
+        mae_ensemble  = mean_absolute_error(y, y_pred_ensemble)
         rmse_ensemble = np.sqrt(mean_squared_error(y, y_pred_ensemble))
-        
-        # Вычисляем средний R²
-        avg_r2 = (r2_lr + r2_rf + r2_gb) / 3.0
-        
+        avg_r2        = (r2_lr + r2_rf + r2_gb + r2_mlp) / 4.0
+
         metrics = {
-            "linear_r2": round(float(r2_lr), 3),
-            "random_forest_r2": round(float(r2_rf), 3),
-            "gradient_boosting_r2": round(float(r2_gb), 3),
-            "ensemble_r2": round(float(r2_ensemble), 3),
-            "ensemble_mae": round(float(mae_ensemble), 2),
-            "ensemble_rmse": round(float(rmse_ensemble), 2),
-            "avg_r2": round(float(avg_r2), 3),
+            "linear_r2":            round(float(r2_lr),  3),
+            "random_forest_r2":     round(float(r2_rf),  3),
+            "gradient_boosting_r2": round(float(r2_gb),  3),
+            "mlp_neural_network_r2":round(float(r2_mlp), 3),
+            "ensemble_r2":          round(float(r2_ensemble),   3),
+            "ensemble_mae":         round(float(mae_ensemble),  2),
+            "ensemble_rmse":        round(float(rmse_ensemble), 2),
+            "avg_r2":               round(float(avg_r2), 3),
             "weights": {
-                "linear": round(float(w_lr), 3),
-                "random_forest": round(float(w_rf), 3),
-                "gradient_boosting": round(float(w_gb), 3)
+                "linear":             round(float(w_lr),  3),
+                "random_forest":      round(float(w_rf),  3),
+                "gradient_boosting":  round(float(w_gb),  3),
+                "mlp_neural_network": round(float(w_mlp), 3),
             }
         }
-        
-        # Создаем простую модель-обертку для совместимости
+
+        logger.info(
+            f"Ensemble [{destination}]: LR={r2_lr:.3f}, RF={r2_rf:.3f}, "
+            f"GB={r2_gb:.3f}, MLP={r2_mlp:.3f}, ensemble={r2_ensemble:.3f}"
+        )
+
         class EnsembleModel:
-            def predict(self, X):
-                return w_lr * lr.predict(X) + w_rf * rf.predict(X) + w_gb * gb.predict(X)
-        
+            def predict(self, X_in):
+                X_in_scaled = x_scaler.transform(X_in)
+                return (
+                    w_lr  * lr.predict(X_in)         +
+                    w_rf  * rf.predict(X_in)          +
+                    w_gb  * gb.predict(X_in)          +
+                    w_mlp * mlp.predict(X_in_scaled)
+                )
+
         return EnsembleModel(), metrics
     
     def _load_cached_forecast_models(self):
