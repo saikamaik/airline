@@ -647,13 +647,14 @@ class AnalyticsService:
         lr = LinearRegression()
         rf = RandomForestRegressor(n_estimators=50, random_state=42, max_depth=5)
         gb = GradientBoostingRegressor(n_estimators=50, random_state=42, max_depth=3)
+        use_early_stopping = len(X) >= 10
         mlp = MLPRegressor(
             hidden_layer_sizes=(64, 32),
             activation='relu',
             max_iter=1000,
             random_state=42,
-            early_stopping=True,
-            validation_fraction=0.1 if len(X) >= 10 else 0.0,
+            early_stopping=use_early_stopping,
+            validation_fraction=0.1 if use_early_stopping else 0.0,
             n_iter_no_change=20,
             tol=1e-4
         )
