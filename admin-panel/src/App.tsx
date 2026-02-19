@@ -8,6 +8,7 @@ import FlightsPage from './pages/FlightsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import EmployeesPage from './pages/EmployeesPage';
 import EmployeeDashboard from './pages/EmployeeDashboard';
+import ClientsPage from './pages/ClientsPage';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -55,6 +56,14 @@ function App() {
               element={
                 <ProtectedRoute requireAdmin>
                   <EmployeesPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="clients" 
+              element={
+                <ProtectedRoute requireAdmin>
+                  <ClientsPage />
                 </ProtectedRoute>
               } 
             />
